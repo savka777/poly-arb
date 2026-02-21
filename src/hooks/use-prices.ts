@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueries } from "@tanstack/react-query"
 import type { PricePoint } from "@/data/polymarket"
 import type { OhlcPoint } from "@/lib/ohlc"
+import type { Market } from "@/lib/types"
 
 interface PricesResponse {
   prices: PricePoint[]
@@ -28,6 +29,30 @@ export function usePrices(
     },
     enabled: !!tokenId,
     staleTime: 60_000,
+  })
+}
+
+export function useOverlayPrices(
+  markets: Market[],
+  interval: "1d" | "1w" | "1m" | "all" = "all"
+) {
+  return useQueries({
+    queries: markets.map((m) => ({
+      queryKey: ["prices", m.clobTokenId, interval],
+      queryFn: async () => {
+        const params = new URLSearchParams({
+          tokenId: m.clobTokenId!,
+          interval,
+          fidelity: "60",
+        })
+        const res = await fetch(`/api/prices?${params}`)
+        if (!res.ok) throw new Error("Failed to fetch prices")
+        const data: PricesResponse = await res.json()
+        return { marketId: m.id, prices: data.prices }
+      },
+      enabled: !!m.clobTokenId,
+      staleTime: 60_000,
+    })),
   })
 }
 

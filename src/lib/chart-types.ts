@@ -21,3 +21,14 @@ export interface VolumeDataPoint {
   value: number
   color: string
 }
+
+export interface OverlaySeries {
+  id: string
+  label: string
+  color: string
+  data: ChartDataPoint[]
+}
+
+export const OVERLAY_COLORS = [
+  "#FF6B6B", "#4ECDC4", "#FFE66D", "#A78BFA", "#F97316", "#06B6D4", "#EC4899",
+] as const

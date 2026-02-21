@@ -2,15 +2,17 @@
 
 import { useMemo, useRef } from "react"
 import { motion } from "framer-motion"
-import { GripVertical, RefreshCw, X } from "lucide-react"
+import { GripVertical, Plus, RefreshCw, X } from "lucide-react"
 import { LightweightChart } from "@/components/lightweight-chart"
-import type { ChartDataPoint } from "@/lib/chart-types"
+import { ChartLegend } from "@/components/chart-legend"
+import type { ChartDataPoint, OverlaySeries } from "@/lib/chart-types"
+import { OVERLAY_COLORS } from "@/lib/chart-types"
 import { SignalBadge } from "@/components/signal-badge"
 import { ChartToolbar } from "@/components/chart-toolbar"
 import { OhlcHeader } from "@/components/ohlc-header"
 import { formatProbability, formatEV } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { usePrices, useOhlc } from "@/hooks/use-prices"
+import { usePrices, useOhlc, useOverlayPrices } from "@/hooks/use-prices"
 import { usePanelSettings } from "@/hooks/use-panel-settings"
 import { useFairValue } from "@/hooks/use-fair-value"
 import { useCrosshairSync } from "@/hooks/use-crosshair-sync"
@@ -36,6 +38,11 @@ interface ComparePanelProps {
   onDrop: (index: number) => void
   syncCrosshair?: boolean
   hideTimeScale?: boolean
+  overlayMarkets?: Market[]
+  onRemoveOverlay?: (id: string) => void
+  onAddOverlay?: () => void
+  isSelected?: boolean
+  onSelect?: () => void
 }
 
 export function ComparePanel({
@@ -51,6 +58,11 @@ export function ComparePanel({
   onDrop,
   syncCrosshair = false,
   hideTimeScale = false,
+  overlayMarkets = [],
+  onRemoveOverlay,
+  onAddOverlay,
+  isSelected = false,
+  onSelect,
 }: ComparePanelProps) {
   const { market, signal, timeSeries } = panel
   const panelControls = usePanelSettings(market.id)
@@ -67,6 +79,9 @@ export function ComparePanel({
   // Fetch real price data
   const { data: priceData } = usePrices(market.clobTokenId, settings.timeFrame)
   const { data: ohlcData } = useOhlc(market.clobTokenId, settings.timeFrame)
+
+  // Fetch overlay price data
+  const overlayQueries = useOverlayPrices(overlayMarkets, settings.timeFrame)
 
   const chartData = useMemo<ChartDataPoint[]>(() => {
     if (priceData?.prices && priceData.prices.length > 0) {
@@ -107,6 +122,29 @@ export function ComparePanel({
     return points.length > 0 ? points : undefined
   }, [signal, timeSeries])
 
+  // Build overlay series from fetched data
+  const overlaySeriesData = useMemo<OverlaySeries[]>(() => {
+    const result: OverlaySeries[] = []
+    for (let i = 0; i < overlayQueries.length; i++) {
+      const q = overlayQueries[i]
+      if (!q.data?.prices || q.data.prices.length === 0) continue
+      const m = overlayMarkets[i]
+      if (!m) continue
+      result.push({
+        id: m.id,
+        label: m.question.length > 30 ? m.question.slice(0, 30) + "..." : m.question,
+        color: OVERLAY_COLORS[i % OVERLAY_COLORS.length] as string,
+        data: q.data.prices
+          .filter((p) => Number.isFinite(p.time) && Number.isFinite(p.price))
+          .map((p) => ({
+            time: p.time as UTCTimestamp,
+            value: p.price,
+          })),
+      })
+    }
+    return result
+  }, [overlayQueries, overlayMarkets])
+
   // OHLC header data from latest candle
   const lastOhlc = ohlcData?.ohlc?.[ohlcData.ohlc.length - 1] ?? null
   const firstOhlc = ohlcData?.ohlc?.[0] ?? null
@@ -116,11 +154,15 @@ export function ComparePanel({
       ? (change / firstOhlc.open) * 100
       : undefined
 
+  // Last price for legend
+  const lastPrice = chartData.length > 0 ? chartData[chartData.length - 1].value : null
+
   return (
     <motion.div
       className={cn(
         "flex h-full min-h-0 flex-col bg-darwin-card overflow-hidden",
-        dragOver && "ring-2 ring-inset ring-darwin-blue/50 bg-darwin-blue/5"
+        dragOver && "ring-2 ring-inset ring-darwin-blue/50 bg-darwin-blue/5",
+        isSelected && "ring-1 ring-inset ring-darwin-blue/30"
       )}
       animate={{
         opacity: dragging ? 0.4 : 1,
@@ -134,7 +176,10 @@ export function ComparePanel({
       onDrop={() => onDrop(index)}
     >
       {/* Header */}
-      <div className="flex h-10 items-center gap-1 border-b border-darwin-border px-1">
+      <div
+        className="flex h-10 items-center gap-1 border-b border-darwin-border px-1 cursor-pointer"
+        onClick={onSelect}
+      >
         <div className="cursor-grab text-darwin-text-muted hover:text-darwin-text-secondary active:cursor-grabbing">
           <GripVertical className="h-3.5 w-3.5" />
         </div>
@@ -150,15 +195,24 @@ export function ComparePanel({
           ) : (
             <span className="text-[11px] text-darwin-text-muted">No signal</span>
           )}
+          {onAddOverlay && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onAddOverlay() }}
+              className="p-1 text-darwin-text-muted transition-colors hover:bg-darwin-hover hover:text-darwin-text"
+              title="Overlay a market"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          )}
           <button
-            onClick={() => onSwap(index)}
+            onClick={(e) => { e.stopPropagation(); onSwap(index) }}
             className="ml-1 p-1 text-darwin-text-muted transition-colors hover:bg-darwin-hover hover:text-darwin-text"
             title="Change market"
           >
             <RefreshCw className="h-3 w-3" />
           </button>
           <button
-            onClick={() => onRemove(index)}
+            onClick={(e) => { e.stopPropagation(); onRemove(index) }}
             className="p-1 text-darwin-text-muted transition-colors hover:bg-darwin-hover hover:text-darwin-red"
             title="Remove panel"
           >
@@ -182,12 +236,13 @@ export function ComparePanel({
       />
 
       {/* Chart */}
-      <div className="flex-1 min-h-0 bg-darwin-bg">
+      <div className="relative flex-1 min-h-0 bg-darwin-bg">
         <LightweightChart
           data={chartData}
           ohlcData={candleData}
           volumeData={volumeData}
           darwinData={darwinData}
+          overlays={overlaySeriesData.length > 0 ? overlaySeriesData : undefined}
           chartType={settings.chartType}
           showVolume={settings.showVolume}
           lineColor="#FFFFFF"
@@ -198,6 +253,19 @@ export function ComparePanel({
           hideTimeScale={hideTimeScale}
           chartRef={chartApiRef}
           mainSeriesRef={mainSeriesApiRef}
+        />
+        <ChartLegend
+          primary={{
+            id: market.id,
+            label: market.question.length > 30 ? market.question.slice(0, 30) + "..." : market.question,
+            color: "#FFFFFF",
+            price: lastPrice,
+          }}
+          overlays={overlaySeriesData.map((o) => ({
+            ...o,
+            price: o.data.length > 0 ? o.data[o.data.length - 1].value : null,
+          }))}
+          onRemoveOverlay={onRemoveOverlay}
         />
       </div>
 

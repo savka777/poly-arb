@@ -1,18 +1,22 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react"
-import { Search, X, Check, Loader2 } from "lucide-react"
+import { Search, X, Check, Loader2, PanelRight } from "lucide-react"
 import { formatProbability, formatVolume } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import type { Market } from "@/lib/types"
 
+export type SelectMode = "overlay" | "new-pane"
+
 interface MarketSearchModalProps {
   open: boolean
   onClose: () => void
-  onSelect: (market: Market) => void
+  onSelect: (market: Market, mode: SelectMode) => void
   currentMarketIds: string[]
   markets: Market[]
   loading?: boolean
+  /** When true, show "New pane" button on each row */
+  hasPanels?: boolean
 }
 
 export function MarketSearchModal({
@@ -22,6 +26,7 @@ export function MarketSearchModal({
   currentMarketIds,
   markets,
   loading,
+  hasPanels = false,
 }: MarketSearchModalProps) {
   const [query, setQuery] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
@@ -72,7 +77,7 @@ export function MarketSearchModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-darwin-border px-4 py-3">
           <span className="text-sm font-medium text-darwin-text">
-            Compare market
+            {hasPanels ? "Overlay or add market" : "Add market"}
           </span>
           <button
             onClick={onClose}
@@ -120,6 +125,7 @@ export function MarketSearchModal({
                         market={market}
                         added
                         onSelect={onSelect}
+                        hasPanels={hasPanels}
                       />
                     ))}
                 </>
@@ -139,6 +145,7 @@ export function MarketSearchModal({
                         market={market}
                         added={false}
                         onSelect={onSelect}
+                        hasPanels={hasPanels}
                       />
                     ))}
                 </>
@@ -161,25 +168,29 @@ function MarketRow({
   market,
   added,
   onSelect,
+  hasPanels,
 }: {
   market: Market
   added: boolean
-  onSelect: (m: Market) => void
+  onSelect: (m: Market, mode: SelectMode) => void
+  hasPanels: boolean
 }) {
   return (
-    <button
-      onClick={() => {
-        if (!added) onSelect(market)
-      }}
-      disabled={added}
+    <div
       className={cn(
         "flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors",
         added
           ? "opacity-50 cursor-default"
-          : "hover:bg-darwin-hover cursor-pointer"
+          : "hover:bg-darwin-hover"
       )}
     >
-      <div className="min-w-0 flex-1">
+      <button
+        onClick={() => {
+          if (!added) onSelect(market, hasPanels ? "overlay" : "new-pane")
+        }}
+        disabled={added}
+        className="min-w-0 flex-1 text-left cursor-pointer disabled:cursor-default"
+      >
         <p className="truncate text-sm text-darwin-text">{market.question}</p>
         <div className="mt-0.5 flex items-center gap-3">
           {market.category && (
@@ -191,13 +202,27 @@ function MarketRow({
             Vol {formatVolume(market.volume)}
           </span>
         </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-3">
+      </button>
+      <div className="flex shrink-0 items-center gap-2">
         <span className="font-data text-sm text-darwin-text">
           {formatProbability(market.probability)}
         </span>
-        {added && <Check className="h-3.5 w-3.5 text-darwin-green" />}
+        {added ? (
+          <Check className="h-3.5 w-3.5 text-darwin-green" />
+        ) : hasPanels ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelect(market, "new-pane")
+            }}
+            className="flex items-center gap-1 border border-darwin-border px-1.5 py-0.5 text-[10px] text-darwin-text-muted hover:text-darwin-text hover:border-darwin-text-muted transition-colors"
+            title="Add as new panel"
+          >
+            <PanelRight className="h-2.5 w-2.5" />
+            New pane
+          </button>
+        ) : null}
       </div>
-    </button>
+    </div>
   )
 }
