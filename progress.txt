@@ -1,0 +1,6 @@
+# Darwin Capital — Progress Log
+
+## Codebase Patterns
+(populated as patterns are discovered during implementation)
+
+---
