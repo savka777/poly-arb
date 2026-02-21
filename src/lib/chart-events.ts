@@ -11,9 +11,16 @@ export interface TimeFrameEvent {
   timeFrame: string
 }
 
+export interface VisibleRangeEvent {
+  sourceId: string
+  from: number
+  to: number
+}
+
 type EventMap = {
   crosshair: CrosshairEvent
   timeframe: TimeFrameEvent
+  visibleRange: VisibleRangeEvent
 }
 
 class ChartEventBus {
