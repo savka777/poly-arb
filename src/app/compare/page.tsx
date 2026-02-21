@@ -327,6 +327,10 @@ export default function ComparePage() {
         <ResizableGrid layout={gridLayout}>
           {normalizedSlots.map((slotId, i) => {
             const panel = slotPanels[i]
+            // In vertical sync mode, hide time scale on all but the last filled panel
+            const isVerticalSync = gridLayout === "vertical" && syncCrosshair
+            const lastFilledIdx = normalizedSlots.reduce((last, s, idx) => s !== null ? idx : last, -1)
+            const shouldHideTime = isVerticalSync && i !== lastFilledIdx
             if (panel) {
               return (
                 <ComparePanel
@@ -342,6 +346,7 @@ export default function ComparePage() {
                   onDragEnd={handleDragEnd}
                   onDrop={handleDrop}
                   syncCrosshair={syncCrosshair}
+                  hideTimeScale={shouldHideTime}
                 />
               )
             }

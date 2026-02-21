@@ -39,6 +39,7 @@ interface LightweightChartProps {
   fairValue?: number
   showFairValue?: boolean
   showDarwinEstimate?: boolean
+  hideTimeScale?: boolean
   height?: number
   onCrosshairMove?: (time: UTCTimestamp | null, price: number | null) => void
   chartRef?: React.MutableRefObject<IChartApi | null>
@@ -81,6 +82,7 @@ export function LightweightChart({
   fairValue,
   showFairValue = false,
   showDarwinEstimate,
+  hideTimeScale = false,
   height,
   onCrosshairMove,
   chartRef: externalChartRef,
@@ -172,13 +174,14 @@ export function LightweightChart({
       },
       timeScale: {
         borderColor: "#2A2A3A",
-        timeVisible: true,
+        timeVisible: !hideTimeScale,
         secondsVisible: false,
         fixLeftEdge: true,
         fixRightEdge: true,
         rightOffset: 2,
-        barSpacing: 12,
-        minBarSpacing: 4,
+        barSpacing: 24,
+        minBarSpacing: 12,
+        visible: !hideTimeScale,
       },
     })
     chartRef.current = chart
@@ -438,6 +441,15 @@ export function LightweightChart({
       fairValueLineRef.current = pl
     }
   }, [fairValue, showFairValue, chartType])
+
+  // Toggle time scale visibility dynamically
+  useEffect(() => {
+    if (!chartRef.current) return
+    chartRef.current.timeScale().applyOptions({
+      visible: !hideTimeScale,
+      timeVisible: !hideTimeScale,
+    })
+  }, [hideTimeScale])
 
   return (
     <div className="relative h-full w-full overflow-hidden" style={{ minHeight: 0 }}>

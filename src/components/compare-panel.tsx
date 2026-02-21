@@ -35,6 +35,7 @@ interface ComparePanelProps {
   onDragEnd: () => void
   onDrop: (index: number) => void
   syncCrosshair?: boolean
+  hideTimeScale?: boolean
 }
 
 export function ComparePanel({
@@ -49,6 +50,7 @@ export function ComparePanel({
   onDragEnd,
   onDrop,
   syncCrosshair = false,
+  hideTimeScale = false,
 }: ComparePanelProps) {
   const { market, signal, timeSeries } = panel
   const panelControls = usePanelSettings(market.id)
@@ -193,6 +195,7 @@ export function ComparePanel({
           showDarwinEstimate={settings.overlays.darwinEstimate}
           fairValue={fv.fairValue ?? undefined}
           showFairValue={settings.overlays.fairValue}
+          hideTimeScale={hideTimeScale}
           chartRef={chartApiRef}
           mainSeriesRef={mainSeriesApiRef}
         />
