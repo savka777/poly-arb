@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polymarket News Mapping Report</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --ink: #1f2a37;
+      --muted: #607085;
+      --line: #dde4ee;
+      --yes: #117a3f;
+      --no: #b42318;
+      --mixed: #8a6b00;
+      --brand: #0e7490;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 0% 0%, #d7eef6 0%, var(--bg) 45%), var(--bg);
+      color: var(--ink);
+      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+    .container { max-width: 1200px; margin: 24px auto 60px; padding: 0 16px; }
+    .hero {
+      background: linear-gradient(140deg, #0e7490, #1d4ed8);
+      color: #fff;
+      border-radius: 16px;
+      padding: 18px 20px;
+      box-shadow: 0 10px 30px rgba(13, 38, 76, 0.2);
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 22px; }
+    .hero p { margin: 0; opacity: 0.92; }
+    .market-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 14px;
+      box-shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
+    }
+    .market-card h2 { margin: 0 0 10px; font-size: 18px; }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .meta-grid > div {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #f9fbff;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .label { color: var(--muted); font-size: 12px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+    .badge.yes { color: var(--yes); border-color: #86efac; background: #ecfdf3; }
+    .badge.no { color: var(--no); border-color: #fda29b; background: #fff1f0; }
+    .badge.mixed { color: var(--mixed); border-color: #fde68a; background: #fffbeb; }
+    .market-link { margin-bottom: 8px; }
+    .market-link a {
+      color: var(--brand);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .queries {
+      border: 1px dashed var(--line);
+      background: #fbfdff;
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+    }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; min-width: 980px; }
+    th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 8px; vertical-align: top; }
+    th { background: #f0f6ff; font-size: 12px; color: #344054; }
+    td { font-size: 13px; }
+    td a { color: #1d4ed8; text-decoration: none; }
+    .query { margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .empty { color: var(--muted); font-style: italic; }
+    @media (max-width: 680px) {
+      .hero h1 { font-size: 18px; }
+      .market-card h2 { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <h1>Polymarket → News Mapping Report</h1>
+      <p>Generated at 2026-02-21T13:06:57.772407+00:00 | Markets analyzed: 1</p>
+    </section>
+    <section class='market-card'><h2>#1 Will X happen before Y date?</h2><div class='meta-grid'><div><span class='label'>Category</span><span>Politics</span></div><div><span class='label'>Market Prob</span><span>65.0%</span></div><div><span class='label'>Volume</span><span>$980,000</span></div><div><span class='label'>Liquidity</span><span>$125,000</span></div><div><span class='label'>News Score</span><span>0.000</span></div><div><span class='label'>Direction</span><span><span class="badge mixed">mixed</span></span></div></div><div class='market-link'><a href='https://polymarket.com/event/will-x-happen-before-y' target='_blank' rel='noopener'>Open market</a></div><div class='queries'><span class='label'>Query Set</span><div>Will X happen before Y date | Will latest developments | Will X happen before Y date analysis implications | arguments against: Will X happen before Y date | Politics breaking news Will</div></div><div class='table-wrap'><table><thead><tr><th>Score</th><th>Confidence</th><th>Direction</th><th>Source</th><th>Published</th><th>Provider</th><th>Article</th></tr></thead><tbody><tr><td colspan="7" class="empty">No mapped articles</td></tr></tbody></table></div></section>
+  </main>
+</body>
+</html>
