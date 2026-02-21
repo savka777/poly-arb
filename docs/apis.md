@@ -1,7 +1,7 @@
 # Darwin Capital — API Reference
 
 > External APIs (Polymarket, Valyu) and internal Next.js API routes.
-> **All shapes verified live on 2026-02-21.** See `docs/api_response_samples.json` for full raw responses.
+> **All shapes verified live on 2026-02-21.** See `docs/samples/` for full raw responses (`gamma.json`, `clob.json`, `valyu.json`).
 
 ---
 
