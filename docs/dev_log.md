@@ -29,6 +29,38 @@
 
 ---
 
+## [2026-02-21 20:00] Pipeline Config System + Expired Market Fix
+
+### What Changed
+- **Modified:** `src/lib/config.ts` — added `marketFilters` (minLiquidity, minVolume, minProbability, maxProbability) and `strategies` (enabled list parsed from comma-separated env var) config sections
+- **Modified:** `src/lib/types.ts` — added `oneDayPriceChange?: number`, `volume24hr?: number`, `spread?: number` to `Market` interface (Gamma API already returns these fields)
+- **Modified:** `src/data/polymarket.ts` — `gammaToMarket()` passes through new volatility fields; `fetchMarkets()` applies config-based filters (liquidity, volume, probability range); added `end_date_min` param to Gamma API query + client-side expired-market filter to exclude resolved/past-endDate markets; added volume sort
+- **Modified:** `src/agent/nodes.ts` — `calculateDivergenceNode` checks `config.strategies.enabled` includes `'ev'` before running EV calculation; skips to END if strategy not enabled
+- **Created:** `scripts/test-pipeline.ts` — end-to-end pipeline test script with active config display
+- **Modified:** `package.json` — added `test:pipeline` script
+- **Modified:** `.env.example` — added `MARKET_MIN_LIQUIDITY`, `MARKET_MIN_VOLUME`, `MARKET_MIN_PROBABILITY`, `MARKET_MAX_PROBABILITY`, `ENABLED_STRATEGIES`
+
+### Decisions Made
+- **Expired market filtering** — Gamma API returns markets with `active: true, closed: false` even after their `endDate` has passed (e.g. 2025 Trump deportation markets still showing in Feb 2026). Fixed by passing `end_date_min` to the API and adding a client-side safety net.
+- **Probability filters as volatility proxy** — markets at 95%+ or 5%- are nearly resolved and won't produce useful signals. Markets closer to 50% have more uncertainty and are more likely to show news-to-price lag.
+- **Config filters apply in addition to caller options** — `FetchMarketsOptions` passed by the caller override config defaults if more restrictive (uses `Math.max` for liquidity).
+- **Strategy check is minimal** — only EV exists now, but the pattern (`config.strategies.enabled.includes('ev')`) makes it trivial to add future strategies.
+
+### Now Unblocked
+- Pipeline now surfaces live 2026 markets with real volume (GTA VI, NHL, Netherlands PM, etc.)
+- Custom market targeting via env vars (e.g., `MARKET_MIN_LIQUIDITY=5000 MARKET_MIN_PROBABILITY=0.10 MARKET_MAX_PROBABILITY=0.90`)
+- Future strategies can be added by extending the `ENABLED_STRATEGIES` env var
+- UI settings panel can read from the same config structure
+
+### Known Issues
+- None
+
+### Next Up
+- UI settings panel for runtime config changes
+- Additional strategies beyond EV divergence
+
+---
+
 ## [2026-02-21 15:30] Compare Flow Rework + Toggleable Analysis Panel
 
 ### What Changed

@@ -14,6 +14,9 @@ export interface Market {
   category?: string
   lastUpdated: string
   clobTokenId?: string
+  spread?: number
+  oneDayPriceChange?: number
+  volume24hr?: number
 }
 
 export interface Signal {

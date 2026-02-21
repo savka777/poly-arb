@@ -65,8 +65,11 @@ export async function estimateProbabilityNode(
     .map((n) => `[${n.source}] ${n.title}\n${n.content}`)
     .join('\n\n');
 
+  const currentDate = new Date().toISOString().split('T')[0];
+
   const prompt = `Given the following prediction market question and recent news, estimate the probability that this question resolves YES.
 
+Today's date: ${currentDate}
 Question: ${state.market.question}
 
 Current market price: ${(state.market.probability * 100).toFixed(1)}%
@@ -128,6 +131,18 @@ export async function calculateDivergenceNode(
   state: EventPodStateType,
 ): Promise<Partial<EventPodStateType>> {
   const startTime = new Date().toISOString();
+
+  // Skip EV calculation if the 'ev' strategy is not enabled
+  if (!config.strategies.enabled.includes('ev')) {
+    return {
+      toolCalls: [{
+        name: 'calculatePriceDivergence',
+        input: { strategy: 'ev', enabled: false },
+        output: { skipped: 'ev strategy not enabled' },
+        timestamp: startTime,
+      }],
+    };
+  }
 
   if (!state.probabilityEstimate) {
     return {
