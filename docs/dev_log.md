@@ -29,6 +29,26 @@
 
 ---
 
+## [2026-02-22 00:00] Integrate Pulled UI Changes + Re-add Watchlist Toggle
+
+### What Changed
+- **Pulled:** 9 files from remote main — compare page overhaul (drag-and-drop slots, search modal, grid layout modes), lightweight-chart tooltip + crosshair improvements, resizable-grid layout modes (horizontal/vertical/auto), crosshair sync with visible range sync, ohlc volume-as-volatility-proxy.
+- **Re-integrated:** `src/app/markets/[id]/page.tsx` — the pull overwrote our watchlist toggle button. Re-added `useWatchlist`/`useToggleWatchlist` hooks, `Star` icon import, and the Watch/Watching button in the header bar (next to Analysis toggle). Yellow fill + border when active.
+
+### Decisions Made
+- **Watchlist button placement** — positioned left of the Analysis toggle in the header, matching the same border/pill button style for visual consistency.
+
+### Now Unblocked
+- All UI features from both branches are now integrated: compare page with drag-and-drop + search modal, chart improvements, AND watchlist toggle on market detail.
+
+### Known Issues
+- None — `npx tsc --noEmit` passes with zero errors.
+
+### Next Up
+- Verify full demo flow end-to-end
+
+---
+
 ## [2026-02-21 23:30] Full Build Fix — Zero TypeScript Errors + Dev Server Running
 
 ### What Changed

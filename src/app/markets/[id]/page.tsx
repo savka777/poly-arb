@@ -7,6 +7,7 @@ import { usePrices, useOhlc } from "@/hooks/use-prices"
 import { useAnalysis } from "@/hooks/use-analysis"
 import { usePanelSettings } from "@/hooks/use-panel-settings"
 import { useFairValue } from "@/hooks/use-fair-value"
+import { useWatchlist, useToggleWatchlist } from "@/hooks/use-watchlist"
 import { LightweightChart } from "@/components/lightweight-chart"
 import { ChartToolbar } from "@/components/chart-toolbar"
 import { OhlcHeader } from "@/components/ohlc-header"
@@ -25,7 +26,7 @@ import {
   relativeTime,
 } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, TrendingDown, TrendingUp, PanelRightOpen, PanelRightClose, Plus } from "lucide-react"
+import { ChevronLeft, TrendingDown, TrendingUp, PanelRightOpen, PanelRightClose, Plus, Star } from "lucide-react"
 import type { UTCTimestamp } from "lightweight-charts"
 
 export default function MarketDetailPage({
@@ -40,6 +41,9 @@ export default function MarketDetailPage({
   const [showAnalysis, setShowAnalysis] = useState(false)
   const panelControls = usePanelSettings(id)
   const { settings } = panelControls
+  const { data: watchlistData } = useWatchlist()
+  const toggleWatchlist = useToggleWatchlist()
+  const isWatchlisted = watchlistData?.marketIds?.includes(id) ?? false
 
   const market = data?.market
   const signal = data?.signals?.[0]
@@ -173,6 +177,19 @@ export default function MarketDetailPage({
           </Link>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => toggleWatchlist.mutate({ marketId: id, watchlisted: isWatchlisted })}
+            className={cn(
+              "flex items-center gap-1.5 border px-2.5 py-1 text-xs transition-colors",
+              isWatchlisted
+                ? "border-yellow-500/50 text-yellow-500"
+                : "border-darwin-border text-darwin-text-secondary hover:border-darwin-text-muted hover:text-darwin-text"
+            )}
+            title={isWatchlisted ? "Remove from watchlist" : "Add to watchlist"}
+          >
+            <Star className={cn("h-3.5 w-3.5", isWatchlisted && "fill-yellow-500")} />
+            {isWatchlisted ? "Watching" : "Watch"}
+          </button>
           <button
             onClick={() => setShowAnalysis((p) => !p)}
             className={cn(
