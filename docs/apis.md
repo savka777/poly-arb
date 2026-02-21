@@ -343,6 +343,101 @@ interface ApiError {
 
 ---
 
+## Merge Notes — API Integration (agents ← vlad branch)
+
+> **Status:** Pending merge. The `vlad` branch has production-ready data wrappers
+> (`src/data/polymarket.ts`, `src/data/valyu.ts`) that are more complete than the
+> agent branch versions. This section documents what needs to happen when merging.
+
+### Key Differences from Agent Branch
+
+The `vlad` branch data wrappers have richer types and more API coverage. After merge,
+the agent nodes should be updated to use these instead of the current simpler versions.
+
+**Market type gains new fields:**
+
+```typescript
+// vlad's Market type adds:
+conditionId: string              // CLOB condition_id (0x hex) — for CLOB API calls
+tokenIds: [string, string]      // [YES token_id, NO token_id] — for price/book queries
+```
+
+These are needed if we want to fetch live CLOB prices or order books during analysis.
+
+**Polymarket wrapper gains new functions:**
+
+| Function | What it does | Potential agent use |
+|----------|-------------|---------------------|
+| `fetchMarketById(gammaId)` | Single market by Gamma ID | Replace current `fetchMarketDetail` |
+| `fetchClobMarket(conditionId)` | CLOB market by condition_id | Live price during analysis |
+| `fetchTokenPrice(tokenId)` | Real-time YES price from CLOB | More accurate than Gamma price |
+| `fetchOrderBook(tokenId)` | Bid/ask depth | Liquidity check before signaling |
+| `fetchClobMarkets(limit, cursor)` | Paginated CLOB markets | Batch scanning |
+
+**Valyu wrapper differences:**
+
+| Aspect | Agent branch | Vlad branch |
+|--------|-------------|-------------|
+| Endpoint | `POST /v1/search` | `POST /v1/deepsearch` |
+| Return type | `Result<NewsResult[]>` | `Result<NewsSearchResult>` (wraps results + query + totalFound) |
+| `NewsResult` | `{ title, content, source, relevanceScore }` | Adds `url: string` |
+| Extra functions | — | `searchWebNews()`, `buildNewsQuery()` |
+| Config | `config.valyuApiKey` | `config.valyuApiKey` + `config.valyu.baseUrl` |
+
+**Config structure differs:**
+
+```typescript
+// vlad's config is nested:
+config.polymarket.gammaBaseUrl   // 'https://gamma-api.polymarket.com'
+config.polymarket.clobBaseUrl    // 'https://clob.polymarket.com'
+config.valyu.baseUrl             // 'https://api.valyu.network/v1'
+
+// agent branch config is flat:
+config.valyuApiKey
+config.evThreshold
+```
+
+### Suggested Integration Steps
+
+1. **Use vlad's `src/data/polymarket.ts` as the source of truth** — it has more API
+   coverage (CLOB price, order book, paginated markets). Drop the agent branch version.
+
+2. **Use vlad's `src/data/valyu.ts` as the source of truth** — it uses the correct
+   `/deepsearch` endpoint and has `buildNewsQuery()` which strips prediction-market
+   phrasing from queries for better search results.
+
+3. **Update `src/agent/nodes.ts` fetchNewsNode** — adapt to vlad's `searchNews()`
+   return type (`Result<NewsSearchResult>` instead of `Result<NewsResult[]>`). The
+   results are at `result.data.results` instead of `result.data`.
+
+4. **Update `src/lib/types.ts`** — merge vlad's richer types (add `GammaMarket`,
+   `ClobMarket`, `ClobToken`, `ClobOrderBook`, `conditionId`/`tokenIds` on Market).
+   The `ToolCallRecord` field name differs: vlad uses `tool` + `durationMs`, agent
+   branch uses `name` + no duration. Pick one and update both sides.
+
+5. **Update `src/lib/config.ts`** — adopt vlad's nested config structure, but keep
+   the Vertex AI fields (`googleCloudProject`, `vertexRegion`) and `useMockData` toggle
+   from the agent branch. Vlad's config uses `requireEnv()` for `VALYU_API_KEY` which
+   will throw without it — guard this behind `useMockData` check.
+
+6. **Consider using `fetchTokenPrice()` in the agent** — the current agent uses
+   `market.probability` (from Gamma, which can be stale). Using CLOB's live price
+   would give a more accurate `marketPrice` for EV calculation. This could be a new
+   node or an enhancement to `fetchNewsNode`.
+
+### Data Shape TBDs
+
+> These will become clear once we merge and inspect real API responses together.
+
+- **GammaMarket `outcomePrices`** — vlad confirmed it's a JSON string of string decimals
+  (e.g. `"[\"0.022\", \"0.978\"]"`), not numbers. The normalization handles this.
+- **Valyu `/deepsearch` vs `/search`** — vlad's branch uses `/deepsearch`, agent branch
+  uses `/search`. Need to confirm which endpoint is current/correct with the Valyu team.
+- **Order book depth** — unclear how deep the book goes and whether shallow markets
+  should suppress signals (liquidity risk).
+
+---
+
 ## Removed from MVP
 
 - **Kalshi API** — dropped to reduce surface area (Polymarket only)

@@ -111,7 +111,7 @@ async function testValyuApi(market: Awaited<ReturnType<typeof testGammaApi>>) {
     return
   }
 
-  const { results } = result.data
+  const results = result.data
   pass('searchNews', `${results.length} results`)
 
   for (const r of results) {

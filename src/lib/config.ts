@@ -1,19 +1,14 @@
-function requireEnv(key: string): string {
-  const val = process.env[key]
-  if (!val) throw new Error(`Missing required environment variable: ${key}`)
-  return val
-}
-
 function optionalEnv(key: string, fallback: string): string {
-  return process.env[key] ?? fallback
+  return process.env[key] ?? fallback;
 }
 
 export const config = {
-  aiModel: optionalEnv('AI_MODEL', 'anthropic/claude-opus-4-6'),
+  // Vertex AI (Google Cloud) — for Claude access
+  googleCloudProject: optionalEnv('GOOGLE_CLOUD_PROJECT', ''),
+  vertexRegion: optionalEnv('VERTEX_REGION', 'us-east5'),
 
-  anthropicApiKey: optionalEnv('ANTHROPIC_API_KEY', ''),
-
-  valyuApiKey: requireEnv('VALYU_API_KEY'),
+  // Valyu — don't throw if missing when using mock data
+  valyuApiKey: optionalEnv('VALYU_API_KEY', ''),
 
   /** Minimum |EV| required to surface a signal */
   evThreshold: parseFloat(optionalEnv('EV_THRESHOLD', '0.05')),
@@ -24,11 +19,14 @@ export const config = {
   /** React Query polling interval (exposed to client) */
   pollIntervalMs: parseInt(
     optionalEnv('NEXT_PUBLIC_POLL_INTERVAL_MS', '30000'),
-    10
+    10,
   ),
 
   /** Maximum markets to analyze per scan cycle */
   marketsPerCycle: parseInt(optionalEnv('MARKETS_PER_CYCLE', '20'), 10),
+
+  /** Use mock data instead of live APIs */
+  useMockData: process.env.USE_MOCK_DATA === 'true',
 
   polymarket: {
     gammaBaseUrl: 'https://gamma-api.polymarket.com',
@@ -38,4 +36,4 @@ export const config = {
   valyu: {
     baseUrl: 'https://api.valyu.network/v1',
   },
-} as const
+} as const;
