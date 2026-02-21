@@ -29,150 +29,88 @@
 
 ---
 
-## [2026-02-21 19:00] Live API Sampling + Docs Correction
+## [2026-02-21 15:30] Compare Flow Rework + Toggleable Analysis Panel
 
 ### What Changed
-- **Created:** `docs/api_response_samples.json` — full raw responses from all 3 APIs (live-captured 2026-02-21)
-- **Rewritten:** `docs/apis.md` — corrected 6 inaccuracies found by comparing docs against live responses
+
+**Modified files:**
+- `src/app/compare/page.tsx` — Reworked flow: starts empty instead of auto-loading 4 markets. Users add markets one at a time via "Add Market" button. Supports `?add=marketId` URL param for adding from detail page. Removed fixed layout selector — grid auto-sizes based on number of panels (1→2→4→6→8). Added remove button per panel.
+- `src/components/resizable-grid.tsx` — Now derives layout automatically from `children.length` instead of requiring explicit `panelCount` prop. Simpler API.
+- `src/components/compare-panel.tsx` — Added `onRemove` prop and X button in panel header to remove individual panels.
+- `src/components/compare-link.tsx` — Accepts optional `marketId` prop. Shows "Add to Compare" on detail page (navigates to `/compare?add=id`), plain "Compare" on grid page.
+- `src/app/markets/[id]/page.tsx` — Darwin Analysis right panel is now toggleable via "Analysis" button in header. Panel collapses to give chart full width. CompareLink now passes market ID.
 
 ### Decisions Made
-- **`docs/api_response_samples.json`** is the source of truth for API shapes going forward. If a type question arises, check this file first before making assumptions.
-
-### Corrections Made to `docs/apis.md`
-
-| Field | Was (documented) | Is (live-verified) |
-|-------|------------------|--------------------|
-| Gamma `liquidity` / `volume` type | `number` | `string` — must `parseFloat()` |
-| Gamma `outcomePrices` values | `"[0.65, 0.35]"` (numbers) | `"[\"0.0295\", \"0.9705\"]"` (string numbers) |
-| Gamma response wrapper | unspecified | Plain array — NO `{ data: [] }` wrapper |
-| CLOB `/price` endpoint | `/prices` (plural, undocumented) | `/price?token_id=...&side=BUY` |
-| CLOB price value type | `number` | `string` — `{ price: "0.015" }` |
-| Valyu endpoint | `/v1/search` | `/v1/deepsearch` |
-| Valyu response shape | `{ results, total_results, credits_used }` | `{ success, error, tx_id, query, results, total_deduction_dollars, total_characters }` |
-| Normalization fn | Used `prices[0]` as `number` directly | Must `parseFloat(prices[0])` after JSON.parse |
+- **Incremental add flow** — Users build their compare view market by market instead of getting 4 random ones. More intentional, matches how TradingView watchlists work.
+- **Auto-layout** — Grid auto-determines cols/rows from panel count: 1→1x1, 2→2x1, 3-4→2x2, 5-6→3x2, 7-8→4x2. No manual layout picker needed.
+- **Toggleable analysis** — Right panel takes 380px, hiding it gives the chart full width for price action focus.
 
 ### Now Unblocked
-- Agent layer can be built with 100% accurate type expectations
-- No guessing about API shapes — `api_response_samples.json` has live examples
+- URL-based compare state (share compare views)
+- Persistent compare lists (localStorage)
 
 ### Known Issues
-- None
+- Compare state is lost on page refresh (in-memory only)
+- Max 8 panels hardcoded
 
 ### Next Up
-- Initialize Next.js project (`package.json`, `tsconfig.json`, `next.config.js`, `tailwind.config.js`)
-- `src/lib/model.ts` — Vercel AI SDK `callLLM` wrapper
-- `src/agent/` + `src/tools/` + `src/store/memory.ts`
+- Demo flow polish
 
 ---
 
-## [2026-02-21 18:00] Full API Smoke Test — All Green
+## [2026-02-21 14:00] TradingView-Grade Chart Platform + Filters
 
 ### What Changed
-- **Rotated:** Valyu API key — new key in `.env` (`val_3495...`)
-- **Verified:** all three external APIs pass smoke test (`scripts/test-apis.ts`)
 
-### Test Output
-```
-── Gamma API ─────────────────────────────────
-  ✓ fetchMarkets: 5 markets returned
-     First market: "Will Trump deport 250,000-500,000 people?"
-     probability=0.9390  liquidity=$7290  volume=$7,509,996
-     conditionId=0x49686d26fb712515cd5e12c23f0a1c7e10214c7faa3cb0a730aabe0c33694082
-  ✓ fetchMarketById(517311): confirmed
+**New files created:**
+- `src/lib/chart-types.ts` — Shared chart type defs (ChartType, TimeFrame, ChartDataPoint, OhlcDataPoint, VolumeDataPoint)
+- `src/lib/ohlc.ts` — Server-side OHLC aggregation from raw `{t,p}` points, adaptive bucket sizes per interval
+- `src/lib/fair-value.ts` — localStorage CRUD for per-market fair value with Result<T>
+- `src/lib/chart-events.ts` — Lightweight pub/sub event bus for crosshair sync across panels
+- `src/contexts/chart-settings.tsx` — Global chart settings context (chartType, timeFrame, showVolume, overlays)
+- `src/hooks/use-panel-settings.ts` — Per-panel local override logic with override indicators
+- `src/hooks/use-fair-value.ts` — React hook wrapping localStorage fair value
+- `src/hooks/use-crosshair-sync.ts` — Hook connecting charts to crosshair event bus
+- `src/components/resizable-grid.tsx` — CSS Grid + mouse drag resizable panels, double-click reset
+- `src/components/chart-toolbar.tsx` — [Line][Candle][Area] | [1D][1W][1M][ALL] | [Vol] | [Darwin][FV] + reset
+- `src/components/ohlc-header.tsx` — TradingView-style O:H:L:C:Vol data line
+- `src/components/fair-value-editor.tsx` — Inline probability editor with pencil/save/reset
 
-── CLOB API ──────────────────────────────────
-  ✓ fetchTokenPrice YES: price=0.9270
-  ✓ fetchOrderBook YES: 43 bids, 16 asks
-
-── Valyu API ─────────────────────────────────
-  query: "Trump deport 250,000-500,000 people"
-  ✓ searchNews: 3 results
-     • "Trump Administration Moves to Deport More Than 500,000..."
-     • "Thanks to President Trump and Secretary Noem, More than 2.5M..."
-```
-
-### Decisions Made
-- Run test with: `set -a && source .env && set +a && npx tsx scripts/test-apis.ts`
-- Valyu new key format: `val_<hex>` (longer format than old key)
-
-### Now Unblocked
-- Sprint 1 agent layer: `src/lib/model.ts`, `src/agent/`, `src/tools/`, `src/store/memory.ts`
-- All data inputs confirmed working — agent can be built against real live data
-
-### Known Issues
-- None — all three APIs operational
-
-### Next Up
-- Initialize Next.js project (`package.json`, `tsconfig.json`, `next.config.js`, `tailwind.config.js`)
-- `src/lib/model.ts` — Vercel AI SDK `callLLM` wrapper (Anthropic key now in `.env`)
-- `src/agent/types.ts` + `src/agent/create-agent.ts` + `src/agent/execute.ts`
-- `src/tools/shared.ts` + `src/tools/event-pod.ts`
-- `src/store/memory.ts`
-
----
-
-## [2026-02-21 17:00] Git History Rewrite + Branch Push
-
-### What Changed
-- **Amended:** commit `f8cd48c` → `31ce8a5` — removed `.env` (with live Valyu key) from tree
-- **Untracked:** `.DS_Store`, `.vscode/settings.json`, `__pycache__/` — removed from index
-- **Created:** `.gitignore` — covers `.env`, `.env.local`, `node_modules/`, `.next/`, `__pycache__/`, `.DS_Store`
-- **Committed:** `89ce4bb` — Sprint 1 data layer (all `src/`, `scripts/`, `.gitignore`, deletions of Python prototypes)
-- **Force-pushed:** `origin/vlad` — rewrote remote history to remove sensitive key
+**Modified files:**
+- `src/components/lightweight-chart.tsx` — Full refactor: stable lifecycle (mount once), line/area/candlestick series toggle via `applyOptions({ visible })`, volume histogram on overlay price scale, crosshair sync support, fair value price line overlay
+- `src/components/compare-panel.tsx` — Added chart toolbar, OHLC header, panel settings, fair value, framer-motion drag animations, crosshair sync refs
+- `src/app/compare/page.tsx` — Replaced fixed 2x2 CSS grid with ResizableGrid, layout selector (1/2/4/6), crosshair sync toggle
+- `src/app/markets/[id]/page.tsx` — Added chart toolbar, OHLC header, fair value editor in signal summary, panel settings
+- `src/app/providers.tsx` — Added ChartSettingsProvider wrapper
+- `src/app/globals.css` — True black background (#0A0A0F), darker card (#111118)
+- `src/app/api/prices/route.ts` — Added `?mode=ohlc` query param for OHLC aggregation
+- `src/hooks/use-prices.ts` — Added `useOhlc()` hook alongside existing `usePrices`
+- `src/app/page.tsx` — Polymarket-style filter bar: search, category pills, sort (Alpha/Volume/Newest/Probability), signal filter (All/Has Signal/High EV/Bullish/Bearish), clear all
 
 ### Decisions Made
-- **Force push required** — history rewrite (amend) always requires `--force` on the remote
-- **`.env` never re-enters index** — `.gitignore` now prevents future accidental commits of secrets
-- **Valyu key should be rotated** — key `asGhqGwape5JafAyk3qDAVSQAHtso312DescfFUa` was on remote before rewrite; treat as compromised
+- **True black (#0A0A0F)** — User requested TradingView-like high contrast. Changed from #131722.
+- **White line by default** — Market price is white (#FFFFFF), overlays use colors (green/red/blue/yellow). Line width 1px for clean look.
+- **Stable chart lifecycle** — Create chart + all series types once on mount. Toggle visibility via `applyOptions({ visible })`. Avoids flicker on settings changes.
+- **OHLC from raw prices** — Polymarket CLOB only returns `{t,p}`. Aggregate server-side with adaptive buckets: 1d→5min, 1w→1hr, 1m→4hr, all→1day. Volume = tick count (activity proxy).
+- **Resizable grid via CSS Grid + mouse events** — No external library. colSplits/rowSplits state as fractions. Reset on panelCount change.
+- **Global + local settings** — ChartSettings context for global defaults, per-panel overrides with blue dot indicators and reset button.
+- **Fair value in localStorage** — Key `darwin_fv_${marketId}`. Falls back to Darwin AI estimate if no custom value.
+- **Category pills from API data** — Categories extracted dynamically from market data, not hardcoded.
 
 ### Now Unblocked
-- All Sprint 1 data work is on `origin/vlad` and visible to teammates
-- Remaining Sprint 1: Next.js init → `src/lib/model.ts` → agent + tools + store
+- Demo polish: loading states, error handling
+- Background scanner integration with new chart components
+- Sentiment overlay (placeholder in settings, needs data source)
 
 ### Known Issues
-- **Valyu key needs rotation** — was publicly exposed in git history before rewrite
-- **No `package.json`** — Next.js project not yet initialized; `npx tsx` works for scripts but `tsc --noEmit` cannot run
+- Crosshair sync works via event bus but `subscribeCrosshairMove` doesn't return an unsubscribe function in lightweight-charts v5 — cleanup relies on chart removal
+- Volume data is tick-count proxy, not actual trade volume (Polymarket CLOB limitation)
+- Fair value editor doesn't validate against negative or >100% values on paste
 
 ### Next Up
-- `npm create next-app` / initialize `package.json` with correct deps
-- `src/lib/model.ts` — Vercel AI SDK entry point
-- Sprint 1 agent work: `src/agent/`, `src/tools/`, `src/store/memory.ts`
-
----
-
-## [2026-02-21 16:00] API Implementation — Sprint 1 (Data Wrappers)
-
-### What Changed
-- **Created:** `src/lib/result.ts` — `ok()`, `err()`, `isOk()` with full `Result<T>` type
-- **Created:** `src/lib/types.ts` — all domain types: `Market`, `Signal`, `TradeProposal`, `Direction`, `GammaMarket`, `ClobMarket`, `ClobOrderBook`, `ToolCallRecord` + API response shapes
-- **Created:** `src/lib/config.ts` — env loading with typed defaults, `requireEnv` guard on `VALYU_API_KEY`
-- **Created:** `src/data/polymarket.ts` — Gamma + CLOB wrappers: `fetchMarkets`, `fetchMarketById`, `fetchClobMarket`, `fetchTokenPrice`, `fetchOrderBook`, `fetchClobMarkets`, `gammaToMarket` normalizer
-- **Created:** `src/data/valyu.ts` — Valyu wrapper: `searchNews`, `searchWebNews`, `buildNewsQuery`
-- **Created:** `scripts/test-apis.ts` — smoke test (Gamma ✓, CLOB ✓, Valyu key exhausted)
-
-### Decisions Made
-- **`market.id` = Gamma numeric ID** (`"517310"`). `conditionId` (0x hex) stored separately for CLOB calls.
-- **`tokenIds: [string, string]`** added to Market type — needed for CLOB price/book queries. Not in original spec but required.
-- **Gamma returns plain array** (no `{ data: [] }` wrapper). CLOB returns `{ data: [], next_cursor }`. Handled differently.
-- **`outcomePrices` is JSON string of string numbers** e.g. `"[\"0.022\", \"0.978\"]"` — must `parseFloat` after `JSON.parse`.
-- **Valyu endpoint confirmed as `/v1/deepsearch`** (not `/v1/search` as documented). Verified working before key exhaustion.
-- **Backoff: 4 attempts at 0/1/2/4s** on 429 or 5xx. Non-429 4xx → return error immediately.
-
-### Now Unblocked
-- Next.js project init (`package.json`, `tsconfig.json`, `next.config.js`)
-- `src/lib/model.ts` — Vercel AI SDK `callLLM` entry point
-- `src/agent/` — factory + tool-use loop
-- `src/tools/shared.ts` + `src/tools/event-pod.ts`
-- `src/store/memory.ts`
-
-### Known Issues
-- **Valyu key exhausted** — key `asGhqGwape5JafAyk3qDAVSQAHtso312DescfFUa` returns 403 after testing. Need fresh key before agent runs.
-- **No `package.json`** — `npx tsx` works ad-hoc but type checking requires Next.js init.
-
-### Next Up
-- Initialize Next.js 14 app
-- `src/lib/model.ts` + `src/agent/` + `src/tools/` + `src/store/memory.ts`
-- Sprint 1 gate: agent produces valid `Signal` from a real market
+- Wire sentiment overlay when data source available
+- Add keyboard shortcuts for chart type toggle
+- Demo flow polish
 
 ---
 

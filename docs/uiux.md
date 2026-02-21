@@ -1,6 +1,6 @@
 # Darwin Capital — UI/UX Specification
 
-> Design spec for the hackathon frontend. Two pages, dark theme, financial terminal aesthetic.
+> Design spec for the hackathon frontend. Multi-page TradingView-grade terminal. True black theme, resizable panels, chart type toggles, overlay system.
 
 ---
 
@@ -20,10 +20,10 @@
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| `bg-primary` | `#0A0A0F` | Page background |
-| `bg-card` | `#12121A` | Card / panel background |
-| `bg-hover` | `#1A1A26` | Hover state on cards |
-| `bg-elevated` | `#222233` | Modal / dropdown background |
+| `darwin-bg` | `#0A0A0F` | Page background (true black) |
+| `darwin-card` | `#111118` | Card / panel background |
+| `darwin-hover` | `#242838` | Hover state on cards |
+| `darwin-elevated` | `#2A2E42` | Modal / dropdown / active toggle |
 | `text-primary` | `#E8E8ED` | Primary text |
 | `text-secondary` | `#8888A0` | Secondary / label text |
 | `text-muted` | `#555566` | Disabled / placeholder text |
@@ -48,10 +48,24 @@
 
 ### Border Radius
 
-- Cards: `12px`
-- Buttons: `8px`
-- Badges: `6px`
-- Alpha bar: `4px`
+- Cards: `0` (sharp rectangles — TradingView style)
+- Buttons: `0`
+- Badges: `4px`
+- Alpha bar: `2px`
+
+### Chart Colors
+
+| Element | Color | Notes |
+|---------|-------|-------|
+| Default market line | `#FFFFFF` | White — overlays use colors |
+| Darwin estimate | `#00D47E` | Green dashed |
+| Fair value line | `#FFAA00` | Yellow dashed |
+| Candlestick up | `#00D47E` | Green |
+| Candlestick down | `#FF4444` | Red |
+| Volume up | `#00D47E80` | Green 50% opacity |
+| Volume down | `#FF444480` | Red 50% opacity |
+| Chart background | `#0A0A0F` | Matches page bg |
+| Grid lines | `rgba(42,42,58,0.3)` | Subtle |
 
 ---
 
@@ -286,6 +300,80 @@ MarketDetail (markets/[id]/page.tsx)
 
 - `>= 1024px (lg)`: two-column layout (left: prices + signal, right: analysis feed)
 - `< 1024px`: single column, signal details above analysis feed
+
+---
+
+## Page 3: Compare View
+
+Multi-panel TradingView-style layout with resizable panels.
+
+### Features
+
+- **Resizable grid**: CSS Grid with drag-to-resize borders. Double-click border to reset to equal sizes.
+- **Layout options**: 1, 2, 4, or 6 panels via layout selector icons in header.
+- **Per-panel settings**: Each panel has its own chart toolbar with local overrides (blue dot indicators). Reset button clears all overrides.
+- **OHLC header**: `O:65.0 H:68.0 L:63.0 C:65.0 +2.0 (+3.1%) Vol:24` per panel.
+- **Chart toolbar**: `[Line][Candle][Area] | [1D][1W][1M][ALL] | [Vol] | [Darwin][FV]`
+- **Crosshair sync**: Toggle in header — when enabled, crosshair moves sync across all panels.
+- **Drag-and-drop**: Reorder panels via drag. Framer-motion opacity/scale animation during drag. Blue ring drop zone.
+- **Market swap**: Refresh icon opens search modal to change panel's market.
+
+### Component Hierarchy
+
+```
+ComparePage
+├── Header (DARWIN CAPITAL | Compare | Layout selector | Sync toggle | Add Market)
+├── ResizableGrid (panelCount)
+│   └── ComparePanel (repeated)
+│       ├── PanelHeader (grip, question, probability, signal badge, swap button)
+│       ├── OhlcHeader (O/H/L/C/Vol data)
+│       ├── ChartToolbar (type, timeframe, volume, overlays, reset)
+│       ├── LightweightChart (line/candle/area + volume + overlays)
+│       └── PanelFooter (EV, Darwin, Market stats)
+└── MarketSearchModal
+```
+
+---
+
+## Market Grid Filter Bar
+
+Polymarket-style filtering on the main grid page.
+
+### Filter Components
+
+1. **Search**: Text input with icon, filters by market question or category.
+2. **Sort buttons**: `[Alpha][Volume][Newest][Probability]` — Alpha sorts by |EV| descending.
+3. **Signal filter**: `[All][Has Signal][High EV][Bullish][Bearish]`
+4. **Category pills**: Horizontal scrolling row of category buttons extracted from market data. "All Categories" default.
+5. **Clear filters**: Appears when any filter is active. Single button resets all.
+6. **Results count**: `"X markets (filtered)"` shown above grid.
+
+---
+
+## Chart Component Architecture
+
+### LightweightChart
+
+Stable lifecycle: chart + all series created once on mount. Data updates via `series.setData()`. Series toggled via `applyOptions({ visible })`.
+
+Series types (created upfront, toggled):
+- AreaSeries (for area mode)
+- LineSeries (for line mode)
+- CandlestickSeries (for candlestick mode)
+- HistogramSeries (volume, bottom 20% of chart)
+- LineSeries (Darwin estimate overlay, dashed)
+- PriceLine (fair value, yellow dashed)
+
+### Settings Architecture
+
+```
+ChartSettingsProvider (global context)
+  └── usePanelSettings(panelId) (per-panel overrides)
+       ├── Merges global + local overrides
+       ├── isOverridden(key) → blue dot indicator
+       ├── setLocal(key, value) → local override
+       └── resetAll() → clear all overrides
+```
 
 ---
 

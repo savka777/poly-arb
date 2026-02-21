@@ -92,6 +92,30 @@
 
 ---
 
+### TradingView Chart Platform (Sprint 3+)
+
+- [x] OHLC aggregation from raw price points (`src/lib/ohlc.ts`)
+- [x] Chart type toggle: line / candlestick / area
+- [x] Volume histogram (bottom 20%, green/red color coded)
+- [x] Stable chart lifecycle (no teardown on data change)
+- [x] True black background (#0A0A0F)
+- [x] White default line, colored overlays only
+- [x] Resizable multi-panel grid (CSS Grid + mouse drag)
+- [x] Layout selector (1/2/4/6 panels)
+- [x] Double-click border to reset panel sizes
+- [x] Global chart settings context
+- [x] Per-panel settings overrides with indicators + reset
+- [x] Chart toolbar: type, timeframe, volume, overlay toggles
+- [x] OHLC header (O:H:L:C:Vol)
+- [x] Fair value overlay (yellow dashed price line, localStorage persistence)
+- [x] Fair value editor (inline edit, custom vs AI indicator, reset)
+- [x] Darwin estimate overlay toggle
+- [x] Crosshair sync across compare panels
+- [x] Framer-motion drag animations (opacity/scale)
+- [x] Market grid filter bar (search, categories, sort, signal filter)
+
+---
+
 ## P2 — Nice to Have
 
 - [ ] Responsive layout (3 col > 2 col > 1 col breakpoints)
@@ -102,8 +126,10 @@
 - [ ] Export signals as JSON/CSV
 - [ ] Sound/visual notification on new high-EV signal
 - [ ] Dark/light theme toggle
-- [ ] Market search/filter bar
+- [x] Market search/filter bar
 - [ ] Keyboard navigation (j/k to move between cards)
+- [ ] Sentiment overlay (needs data source)
+- [ ] Keyboard shortcuts for chart type toggle
 
 ---
 
