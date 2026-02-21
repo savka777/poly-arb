@@ -375,9 +375,9 @@ export default function ComparePage() {
       {/* Top bar */}
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-darwin-border px-4">
         <div className="flex items-center gap-4">
-          <h1 className="text-sm font-semibold tracking-tight text-darwin-text">
+          <a href="/" className="text-sm font-semibold tracking-tight text-darwin-text hover:text-darwin-text-secondary transition-colors">
             DARWIN CAPITAL
-          </h1>
+          </a>
           <span className="text-xs font-medium tracking-wider text-darwin-text-secondary uppercase">
             Compare
           </span>
