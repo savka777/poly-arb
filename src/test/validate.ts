@@ -1,4 +1,3 @@
-import { db, schema } from '../db/index';
 import { saveSignal, getSignals, getSignalsByMarket, getRecentSignals, getSignalCount } from '../store/signals';
 import { getMockMarkets, getMockNewsResults } from '../data/mock';
 import { calculateEV, evToConfidence } from '../intelligence/calculations';
@@ -11,21 +10,6 @@ let failed = 0;
 function check(name: string, fn: () => boolean) {
   try {
     if (fn()) {
-      console.log(`  ✓ ${name}`);
-      passed++;
-    } else {
-      console.log(`  ✗ ${name} — assertion failed`);
-      failed++;
-    }
-  } catch (e) {
-    console.log(`  ✗ ${name} — ${String(e)}`);
-    failed++;
-  }
-}
-
-async function checkAsync(name: string, fn: () => Promise<boolean>) {
-  try {
-    if (await fn()) {
       console.log(`  ✓ ${name}`);
       passed++;
     } else {
@@ -140,7 +124,7 @@ async function run() {
 
   check('LangGraph graph imports without error', () => {
     // Dynamic import to test module loading
-    require('../agent/graph');
+    void import('../agent/graph');
     return true;
   });
 
