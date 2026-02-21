@@ -17,7 +17,6 @@ import { AlphaBar } from "@/components/alpha-bar"
 import { SignalBadge } from "@/components/signal-badge"
 import { AnalysisFeed, type FeedEntry } from "@/components/analysis-feed"
 import { QueryInterface } from "@/components/query-interface"
-import { CompareLink } from "@/components/compare-link"
 import {
   formatProbability,
   formatEV,
@@ -26,7 +25,7 @@ import {
   relativeTime,
 } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, TrendingDown, TrendingUp, PanelRightOpen, PanelRightClose } from "lucide-react"
+import { ChevronLeft, TrendingDown, TrendingUp, PanelRightOpen, PanelRightClose, Plus } from "lucide-react"
 import type { UTCTimestamp } from "lightweight-charts"
 
 export default function MarketDetailPage({
@@ -38,7 +37,7 @@ export default function MarketDetailPage({
   const { data, isLoading } = useMarket(id)
   const analysis = useAnalysis()
   const [feedEntries, setFeedEntries] = useState<FeedEntry[]>([])
-  const [showAnalysis, setShowAnalysis] = useState(true)
+  const [showAnalysis, setShowAnalysis] = useState(false)
   const panelControls = usePanelSettings(id)
   const { settings } = panelControls
 
@@ -164,6 +163,14 @@ export default function MarketDetailPage({
           <span className="label-caps !text-[10px]">
             {market.category ?? "polymarket"}
           </span>
+          <div className="h-4 w-px bg-darwin-border" />
+          <Link
+            href={`/compare?add=${id}`}
+            className="flex items-center gap-1.5 border border-darwin-border px-2.5 py-1 text-xs text-darwin-text-secondary transition-colors hover:border-darwin-text-muted hover:text-darwin-text"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Market
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -179,7 +186,6 @@ export default function MarketDetailPage({
             {showAnalysis ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
             Analysis
           </button>
-          <CompareLink marketId={id} />
         </div>
       </header>
 
