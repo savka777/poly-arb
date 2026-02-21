@@ -471,7 +471,7 @@ export default function ComparePage() {
             </button>
           )}
           <Link
-            href="/"
+            href="/dashboard"
             className="flex items-center gap-1.5 text-xs text-darwin-text-secondary transition-colors hover:text-darwin-text"
           >
             <ArrowLeft className="h-3.5 w-3.5" />

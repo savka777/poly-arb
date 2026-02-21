@@ -157,7 +157,7 @@ export default function MarketDetailPage({
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-darwin-border px-4">
         <div className="flex items-center gap-4">
           <Link
-            href="/"
+            href="/dashboard"
             className="inline-flex items-center gap-1 text-sm text-darwin-text-secondary hover:text-darwin-text transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
