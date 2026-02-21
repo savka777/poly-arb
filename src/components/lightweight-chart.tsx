@@ -275,17 +275,25 @@ export function LightweightChart({
 
     // Crosshair move handler — tooltip + external callback
     chart.subscribeCrosshairMove((param) => {
+      if (disposed) return
       if (!param.time || !param.point) {
         setTooltip(null)
         if (onCrosshairMove) onCrosshairMove(null, null)
         return
       }
 
-      const areaData = param.seriesData.get(area)
-      const lineData = param.seriesData.get(line)
-      const candleData = param.seriesData.get(candle)
-      const volData = param.seriesData.get(vol)
-      const darwinDataPt = param.seriesData.get(darwin)
+      let seriesDataMap: typeof param.seriesData
+      try {
+        seriesDataMap = param.seriesData
+      } catch {
+        return // series disposed
+      }
+
+      const areaData = seriesDataMap.get(area)
+      const lineData = seriesDataMap.get(line)
+      const candleData = seriesDataMap.get(candle)
+      const volData = seriesDataMap.get(vol)
+      const darwinDataPt = seriesDataMap.get(darwin)
 
       let price: number | null = null
       if (areaData && "value" in areaData) price = areaData.value
@@ -303,12 +311,14 @@ export function LightweightChart({
 
       // Gather overlay series data
       const overlayPrices: { label: string; color: string; price: number }[] = []
-      for (const [, entry] of overlaySeriesRefs.current) {
-        const d = param.seriesData.get(entry.series)
-        if (d && "value" in d) {
-          overlayPrices.push({ label: entry.label, color: entry.color, price: d.value })
+      try {
+        for (const [, entry] of overlaySeriesRefs.current) {
+          const d = param.seriesData.get(entry.series)
+          if (d && "value" in d) {
+            overlayPrices.push({ label: entry.label, color: entry.color, price: d.value })
+          }
         }
-      }
+      } catch { /* series disposed */ }
 
       setTooltip({
         x: param.point.x,
@@ -343,25 +353,24 @@ export function LightweightChart({
     return () => {
       disposed = true
       disposedRef.current = true
+      // Disconnect observer FIRST to stop resize events
       observer.disconnect()
-      chart.remove()
-      chartRef.current = null
-      if (externalChartRef) externalChartRef.current = null
-      if (externalMainSeriesRef) externalMainSeriesRef.current = null
+      // Clear tooltip to prevent stale reads
+      setTooltip(null)
+      // Null refs BEFORE chart.remove() so no callback can access them
       areaSeriesRef.current = null
       lineSeriesRef.current = null
       candleSeriesRef.current = null
       volumeSeriesRef.current = null
       darwinSeriesRef.current = null
-      if (fairValueLineRef.current) {
-        try { fairValueLineRef.current.series.removePriceLine(fairValueLineRef.current.line) } catch { /* */ }
-        fairValueLineRef.current = null
-      }
-      if (lastPriceLineRef.current) {
-        try { lastPriceLineRef.current.series.removePriceLine(lastPriceLineRef.current.line) } catch { /* */ }
-        lastPriceLineRef.current = null
-      }
+      fairValueLineRef.current = null
+      lastPriceLineRef.current = null
       overlaySeriesRefs.current.clear()
+      // Now safe to remove
+      try { chart.remove() } catch { /* already disposed */ }
+      chartRef.current = null
+      if (externalChartRef) externalChartRef.current = null
+      if (externalMainSeriesRef) externalMainSeriesRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [height])
@@ -448,8 +457,8 @@ export function LightweightChart({
     }
 
     // Fit content
-    if (chartRef.current) {
-      chartRef.current.timeScale().fitContent()
+    if (chartRef.current && !disposedRef.current) {
+      try { chartRef.current.timeScale().fitContent() } catch { /* disposed */ }
     }
   }, [data, ohlcData, volumeData, darwinData, chartType, lineColor, darwinColor, showVolume, showDarwinEstimate])
 
