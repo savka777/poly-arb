@@ -13,6 +13,7 @@ export interface Market {
   url: string
   category?: string
   lastUpdated: string
+  clobTokenId?: string
 }
 
 export interface Signal {
