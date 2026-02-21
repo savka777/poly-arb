@@ -9,13 +9,13 @@
 
 ## TL;DR — Top 5 Alerts
 
-| Priority | Issue | Darwin Component Affected |
-|----------|-------|--------------------------|
-| 🔴 CRITICAL | No kill switch / circuit breaker | Scan scheduler + agent loop |
-| 🔴 CRITICAL | State resets on restart — no audit trail | In-memory store |
-| 🟡 HIGH | LLM probability miscalibration — no human checkpoint | Event Pod agent |
-| 🟡 HIGH | No rate-limit coordination across concurrent callers | Polymarket + Valyu wrappers |
-| 🟢 MEDIUM | Full payload polling — no delta encoding | React Query + `/api/signals` |
+| Priority    | Issue                                                 | Darwin Component Affected     |
+| ----------- | ----------------------------------------------------- | ----------------------------- |
+| 🔴 CRITICAL | No kill switch / circuit breaker                      | Scan scheduler + agent loop   |
+| 🔴 CRITICAL | State resets on restart — no audit trail             | In-memory store               |
+| 🟡 HIGH     | LLM probability miscalibration — no human checkpoint | Event Pod agent               |
+| 🟡 HIGH     | No rate-limit coordination across concurrent callers  | Polymarket + Valyu wrappers   |
+| 🟢 MEDIUM   | Full payload polling — no delta encoding             | React Query +`/api/signals` |
 
 ---
 
@@ -35,13 +35,13 @@ SIMPLICITY    RELIABILITY
 
 ### How Darwin Capital's Components Map
 
-| Component | Speed | Reliability | Simplicity | Sacrifice |
-|-----------|-------|-------------|------------|-----------|
-| Scan cycle (background scheduler) | Medium | High (Result<T> everywhere) | Low | Simplicity — multi-step pipeline is inherently complex |
-| LLM agent loop (max 10 steps) | Low | High (Zod validation, retries) | Medium | Speed — LLM is the bottleneck |
-| React Query polling | Medium | High | High | Speed — WebSocket dropped for simplicity |
-| In-memory signal store | High | Low (resets on restart) | High | Reliability — explicit trade-off in ARCHITECTURE.md |
-| `/api/analyze` on-demand | Low | Medium | High | Speed + Reliability — single LLM call, no fallback |
+| Component                         | Speed  | Reliability                     | Simplicity | Sacrifice                                               |
+| --------------------------------- | ------ | ------------------------------- | ---------- | ------------------------------------------------------- |
+| Scan cycle (background scheduler) | Medium | High (Result`<T>` everywhere) | Low        | Simplicity — multi-step pipeline is inherently complex |
+| LLM agent loop (max 10 steps)     | Low    | High (Zod validation, retries)  | Medium     | Speed — LLM is the bottleneck                          |
+| React Query polling               | Medium | High                            | High       | Speed — WebSocket dropped for simplicity               |
+| In-memory signal store            | High   | Low (resets on restart)         | High       | Reliability — explicit trade-off in ARCHITECTURE.md    |
+| `/api/analyze` on-demand        | Low    | Medium                          | High       | Speed + Reliability — single LLM call, no fallback     |
 
 **Key insight from the workshop:** Susquehanna's kill switch prioritises **simplicity + reliability** above all else.
 Darwin has no equivalent. This is the highest priority gap.
@@ -65,6 +65,7 @@ nonsensical signals, or the Polymarket API starts returning garbage data, there 
 no way to halt the system short of killing the Node process.
 
 **Precaution / Action:**
+
 - Add a `KILL_SWITCH=false` env var checked at the top of every scan cycle and agent invocation
 - Expose `POST /api/admin/stop` and `POST /api/admin/start` routes (no auth needed for MVP)
 - Check the flag before each LangGraph node execution — if `true`, short-circuit immediately
@@ -89,14 +90,13 @@ no sequence numbers, and state that **resets to zero on every server restart**.
    minutes for many markets), the React Query UI is reading a partially-updated store.
    Some signals are stale, some are new, some belong to the current cycle, some to the last.
    The consumer has no way to distinguish.
-
 2. **No restart recovery:** Every server restart wipes the signal history. There is no
    snapshot to restore from. The first scan cycle after restart is blind — the UI will
    show zero signals until the first cycle completes.
-
 3. **No `lastUpdated` signal version on the store level** — only per-signal `createdAt`.
 
 **Precautions:**
+
 - Add a `scanCycleId` (UUID per cycle) to every `Signal` so the UI can tell which
   cycle a signal came from and detect when a new cycle begins
 - Add `GET /api/health` to return `{ lastScanAt, currentScanCycleId, isScanning }` —
@@ -112,19 +112,21 @@ no sequence numbers, and state that **resets to zero on every server restart**.
 > invaluable to figure out exactly where the bottlenecks are."*
 
 Susquehanna used flame graphs (HotSpot profiler) and found two bottlenecks:
+
 1. The true price calculation
 2. The broadcasting / publishing step
 
 Darwin Capital's likely bottlenecks (predicted, not yet profiled):
 
-| Bottleneck | Estimated Impact | Root Cause |
-|-----------|-----------------|------------|
-| LLM agent iteration (per market) | Very high — 3-15s per market | Network round-trip to Anthropic API |
-| Polymarket Gamma API fetch | Medium — rate limited at 60 req/min | External API constraint |
-| Valyu news fetch per signal | Medium — paid per query | Compound latency with LLM |
-| React Query full-payload poll | Low currently, degrades at scale | No delta encoding |
+| Bottleneck                       | Estimated Impact                     | Root Cause                          |
+| -------------------------------- | ------------------------------------ | ----------------------------------- |
+| LLM agent iteration (per market) | Very high — 3-15s per market        | Network round-trip to Anthropic API |
+| Polymarket Gamma API fetch       | Medium — rate limited at 60 req/min | External API constraint             |
+| Valyu news fetch per signal      | Medium — paid per query             | Compound latency with LLM           |
+| React Query full-payload poll    | Low currently, degrades at scale     | No delta encoding                   |
 
 **Precaution:** Before the hackathon demo, run a timing instrumentation pass:
+
 ```typescript
 // Wrap every tool invocation in the agent loop
 const start = performance.now()
@@ -132,6 +134,7 @@ const result = await tool.execute(input)
 const elapsed = performance.now() - start
 console.log(`[TOOL] ${tool.name} took ${elapsed.toFixed(0)}ms`)
 ```
+
 This will immediately surface where the demo might freeze.
 
 ---
@@ -139,6 +142,7 @@ This will immediately surface where the demo might freeze.
 ### Lesson 4 — Data Optimisation Cascade
 
 Susquehanna's modelling app went from 120MB to 36MB payloads through three steps:
+
 1. **Payload audit** — removed 80% of fields consumers didn't need
 2. **Delta encoding** — only transmit changed values
 3. **Binary serialisation** — Protocol Buffers instead of JSON
@@ -162,10 +166,12 @@ React Query polls `/api/signals` every `NEXT_PUBLIC_POLL_INTERVAL_MS`. On each p
 it downloads the full signal list even if nothing changed.
 
 **Action:** Add `?since=<ISO8601>` query param support to `/api/signals`:
+
 ```
 GET /api/signals?since=2026-02-21T10:00:00Z
 → returns only signals created or updated after that timestamp
 ```
+
 The client tracks `lastFetched` and sends it on each poll. Empty arrays are tiny.
 
 #### Step 3: Serialisation
@@ -196,6 +202,7 @@ visible in the backlog), the scan cycle will overrun its own interval, creating 
 compounding lag problem.
 
 **Precautions:**
+
 1. Hard cap the market batch size: `MARKETS_PER_CYCLE=20` env var with a default
 2. Process markets in parallel batches (Promise.allSettled with concurrency limit)
 3. Skip markets already analyzed in the last N minutes (simple deduplication in the store)
@@ -211,6 +218,7 @@ compounding lag problem.
 Susquehanna keeps human traders in the loop specifically for edge cases that code can't handle.
 
 **Darwin Capital's exposure:** The Event Pod agent is fully autonomous. It:
+
 1. Fetches news
 2. Estimates probability (LLM sub-call)
 3. Calculates divergence
@@ -219,6 +227,7 @@ Susquehanna keeps human traders in the loop specifically for edge cases that cod
 There is **no human verification step** before a signal is surfaced to users.
 
 **Specific risks:**
+
 - LLM probability estimates are not calibrated. The mandate says *"a 70% estimate means
   you'd be wrong 30% of the time"* but there is no historical accuracy tracking to validate this.
 - Breaking news (the exact black-swan scenario Susquehanna described) will cause Valyu
@@ -227,6 +236,7 @@ There is **no human verification step** before a signal is surfaced to users.
   based on a single misleading news article.
 
 **Precautions:**
+
 1. **Confidence floor gate:** Only surface `confidence: 'high'` signals when `|ev| > 0.10`
    (double the current threshold). High EV + high confidence = compelling; avoid low-evidence extremes.
 2. **Timestamp recency gate in agent mandate:** Add to the Event Pod mandate:
@@ -246,22 +256,24 @@ Susquehanna uses different languages and runtimes for different concerns within 
 
 **Darwin Capital's stack audit:**
 
-| Component | Current Stack | Assessment |
-|-----------|---------------|------------|
-| Data wrappers | TypeScript / fetch | Correct — typed, maintainable, fast enough |
-| LLM agent loop | Vercel AI SDK `generateText` | Correct — model-agnostic, swappable |
-| In-memory store | `Map<string, Signal>` | Correct for hackathon; SQLite needed for production |
-| Frontend polling | React Query + REST | Correct given WebSocket exclusion |
-| Background scanner | `setInterval` (implied) | Risk: `setInterval` doesn't prevent overlapping cycles |
+| Component          | Current Stack                  | Assessment                                              |
+| ------------------ | ------------------------------ | ------------------------------------------------------- |
+| Data wrappers      | TypeScript / fetch             | Correct — typed, maintainable, fast enough             |
+| LLM agent loop     | Vercel AI SDK `generateText` | Correct — model-agnostic, swappable                    |
+| In-memory store    | `Map<string, Signal>`        | Correct for hackathon; SQLite needed for production     |
+| Frontend polling   | React Query + REST             | Correct given WebSocket exclusion                       |
+| Background scanner | `setInterval` (implied)      | Risk:`setInterval` doesn't prevent overlapping cycles |
 
 **Specific alert — `setInterval` overlap:**
 If the scan cycle takes longer than `CYCLE_INTERVAL_MS`, a new cycle will start while the
 previous one is still running. This creates:
+
 - Duplicate LLM API calls for the same markets
 - Race conditions writing to the in-memory store
 - Potential cost explosion
 
 **Fix:** Use a self-scheduling pattern instead:
+
 ```typescript
 async function runCycle() {
   if (isRunning) return  // guard
@@ -287,13 +299,13 @@ Susquehanna's UI techniques: numerical display, colour coding, sound alerts, nes
 
 **Darwin Capital's UI design against these principles:**
 
-| Susquehanna Technique | Darwin Capital Status |
-|----------------------|----------------------|
-| Numerical precision over graphs | Alpha bar is visual — needs exact numbers on hover (P1 backlog ✓) |
-| Colour coding for direction | Signal badge (low/medium/high confidence) — good |
-| Nested views (top-level → detail) | Market grid → detail page — well designed |
-| Focus / attention drawing | Missing: no visual distinction for new signals vs seen signals |
-| Sound alerts | P2 backlog — listed but deprioritised |
+| Susquehanna Technique              | Darwin Capital Status                                               |
+| ---------------------------------- | ------------------------------------------------------------------- |
+| Numerical precision over graphs    | Alpha bar is visual — needs exact numbers on hover (P1 backlog ✓) |
+| Colour coding for direction        | Signal badge (low/medium/high confidence) — good                   |
+| Nested views (top-level → detail) | Market grid → detail page — well designed                         |
+| Focus / attention drawing          | Missing: no visual distinction for new signals vs seen signals      |
+| Sound alerts                       | P2 backlog — listed but deprioritised                              |
 
 **Precaution for the demo:** The `alpha-bar` component visualises EV divergence.
 Visually impressive, but for a judge with a trading background (likely at a Susquehanna
@@ -308,30 +320,30 @@ Based on the Susquehanna workshop mapped against the current architecture:
 
 ### Before Demo — Must Fix
 
-| # | Action | Effort | Risk if Skipped |
-|---|--------|--------|-----------------|
+| # | Action                                                     | Effort | Risk if Skipped                  |
+| - | ---------------------------------------------------------- | ------ | -------------------------------- |
 | 1 | Add `isRunning` guard to prevent overlapping scan cycles | 30 min | Cost explosion, store corruption |
-| 2 | Hard cap `MARKETS_PER_CYCLE` env var | 15 min | Demo freezes mid-presentation |
-| 3 | Add timing logs around every tool call in agent loop | 30 min | Blind to where latency hits |
-| 4 | Return `{ isScanning, lastScanAt }` from `/api/health` | 20 min | UI shows no scan progress |
+| 2 | Hard cap `MARKETS_PER_CYCLE` env var                     | 15 min | Demo freezes mid-presentation    |
+| 3 | Add timing logs around every tool call in agent loop       | 30 min | Blind to where latency hits      |
+| 4 | Return `{ isScanning, lastScanAt }` from `/api/health` | 20 min | UI shows no scan progress        |
 
 ### Before Demo — Should Fix
 
-| # | Action | Effort | Risk if Skipped |
-|---|--------|--------|-----------------|
-| 5 | Require ≥2 news sources before `confidence: 'high'` | 1 hr | Misleading high-confidence signals |
-| 6 | Add `scanCycleId` to Signal type | 30 min | UI can't detect stale vs fresh signals |
-| 7 | Display exact EV numbers on market cards (not just alpha bar) | 1 hr | Loses credibility with trading judges |
+| # | Action                                                        | Effort | Risk if Skipped                        |
+| - | ------------------------------------------------------------- | ------ | -------------------------------------- |
+| 5 | Require ≥2 news sources before `confidence: 'high'`        | 1 hr   | Misleading high-confidence signals     |
+| 6 | Add `scanCycleId` to Signal type                            | 30 min | UI can't detect stale vs fresh signals |
+| 7 | Display exact EV numbers on market cards (not just alpha bar) | 1 hr   | Loses credibility with trading judges  |
 
 ### Post-Hackathon — Production Readiness
 
-| # | Action | Rationale |
-|---|--------|-----------|
-| 8 | Kill switch endpoint (`POST /api/admin/stop`) | Susquehanna's #1 lesson |
-| 9 | SQLite persistence + signal history | No restart recovery without it |
-| 10 | Parallel market processing with concurrency limit | Scaling from 10 → 100+ markets |
-| 11 | Delta encoding for signal polling | Bandwidth as signal volume grows |
-| 12 | Calibration tracking: predicted EV vs actual resolution | Validates the model's edge |
+| #  | Action                                                  | Rationale                        |
+| -- | ------------------------------------------------------- | -------------------------------- |
+| 8  | Kill switch endpoint (`POST /api/admin/stop`)         | Susquehanna's #1 lesson          |
+| 9  | SQLite persistence + signal history                     | No restart recovery without it   |
+| 10 | Parallel market processing with concurrency limit       | Scaling from 10 → 100+ markets  |
+| 11 | Delta encoding for signal polling                       | Bandwidth as signal volume grows |
+| 12 | Calibration tracking: predicted EV vs actual resolution | Validates the model's edge       |
 
 ---
 
@@ -341,12 +353,12 @@ What Susquehanna described and what Darwin Capital is building are philosophical
 
 - **Susquehanna** computes a "theo" (theoretical fair price) and trades when market price
   diverges from theo. The trading decision is then "almost trivial."
-
 - **Darwin Capital** computes `darwinEstimate` (LLM-estimated probability) and generates
   a signal when `|darwinEstimate - marketPrice| > EV_THRESHOLD`. Same structure, different inputs.
 
 The Susquehanna system uses quantitative models. Darwin uses an LLM + news context.
 The engineering challenges are identical:
+
 1. How do you compute the theo fast enough?
 2. How do you trust the theo is accurate?
 3. How do you act on it reliably?

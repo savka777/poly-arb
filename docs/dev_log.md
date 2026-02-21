@@ -29,6 +29,42 @@
 
 ---
 
+## [2026-02-21 19:00] Live API Sampling + Docs Correction
+
+### What Changed
+- **Created:** `docs/api_response_samples.json` — full raw responses from all 3 APIs (live-captured 2026-02-21)
+- **Rewritten:** `docs/apis.md` — corrected 6 inaccuracies found by comparing docs against live responses
+
+### Decisions Made
+- **`docs/api_response_samples.json`** is the source of truth for API shapes going forward. If a type question arises, check this file first before making assumptions.
+
+### Corrections Made to `docs/apis.md`
+
+| Field | Was (documented) | Is (live-verified) |
+|-------|------------------|--------------------|
+| Gamma `liquidity` / `volume` type | `number` | `string` — must `parseFloat()` |
+| Gamma `outcomePrices` values | `"[0.65, 0.35]"` (numbers) | `"[\"0.0295\", \"0.9705\"]"` (string numbers) |
+| Gamma response wrapper | unspecified | Plain array — NO `{ data: [] }` wrapper |
+| CLOB `/price` endpoint | `/prices` (plural, undocumented) | `/price?token_id=...&side=BUY` |
+| CLOB price value type | `number` | `string` — `{ price: "0.015" }` |
+| Valyu endpoint | `/v1/search` | `/v1/deepsearch` |
+| Valyu response shape | `{ results, total_results, credits_used }` | `{ success, error, tx_id, query, results, total_deduction_dollars, total_characters }` |
+| Normalization fn | Used `prices[0]` as `number` directly | Must `parseFloat(prices[0])` after JSON.parse |
+
+### Now Unblocked
+- Agent layer can be built with 100% accurate type expectations
+- No guessing about API shapes — `api_response_samples.json` has live examples
+
+### Known Issues
+- None
+
+### Next Up
+- Initialize Next.js project (`package.json`, `tsconfig.json`, `next.config.js`, `tailwind.config.js`)
+- `src/lib/model.ts` — Vercel AI SDK `callLLM` wrapper
+- `src/agent/` + `src/tools/` + `src/store/memory.ts`
+
+---
+
 ## [2026-02-21 18:00] Full API Smoke Test — All Green
 
 ### What Changed
