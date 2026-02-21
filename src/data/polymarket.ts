@@ -27,7 +27,24 @@ interface GammaMarket {
   spread?: number
 }
 
-function gammaToMarket(gamma: GammaMarket): Market {
+interface GammaEvent {
+  id: string
+  title: string
+  slug: string
+  description: string
+  startDate: string
+  endDate: string
+  liquidity: number
+  volume: number
+  volume24hr: number
+  active: boolean
+  closed: boolean
+  featured: boolean
+  tags: Array<{ label: string; slug: string }>
+  markets: GammaMarket[]
+}
+
+function gammaToMarket(gamma: GammaMarket, event?: { id: string; title: string }): Market {
   let probability = 0.5
   try {
     const prices = JSON.parse(gamma.outcomePrices) as number[]
@@ -59,6 +76,7 @@ function gammaToMarket(gamma: GammaMarket): Market {
     spread: gamma.spread,
     oneDayPriceChange: gamma.oneDayPriceChange,
     volume24hr: gamma.volume24hr,
+    event,
   }
 }
 
@@ -127,7 +145,7 @@ export async function fetchMarkets(options?: {
 
     const markets = data
       .filter((m) => m.question && m.outcomePrices)
-      .map(gammaToMarket)
+      .map((m) => gammaToMarket(m))
       .filter((m) => {
         // Skip expired markets (safety net — end_date_min should handle this server-side)
         if (new Date(m.endDate).getTime() <= now) return false
@@ -143,6 +161,111 @@ export async function fetchMarkets(options?: {
   } catch (e) {
     return err(`Failed to parse Gamma response: ${e instanceof Error ? e.message : String(e)}`)
   }
+}
+
+export async function fetchEvents(options?: {
+  limit?: number
+  offset?: number
+}): Promise<Result<GammaEvent[]>> {
+  const limit = options?.limit ?? 50
+  const offset = options?.offset ?? 0
+
+  const params = new URLSearchParams({
+    active: "true",
+    closed: "false",
+    order: "volume24hr",
+    ascending: "false",
+    limit: String(limit),
+    offset: String(offset),
+  })
+
+  const result = await fetchWithRetry(`${GAMMA_BASE}/events?${params}`)
+  if (!result.ok) return err(result.error)
+
+  try {
+    const data = (await result.data.json()) as GammaEvent[]
+    return ok(data)
+  } catch (e) {
+    return err(`Failed to parse Gamma events response: ${e instanceof Error ? e.message : String(e)}`)
+  }
+}
+
+export async function fetchTrendingMarkets(options?: {
+  limit?: number
+  pages?: number
+}): Promise<Result<Market[]>> {
+  const limit = options?.limit ?? 50
+  const pages = options?.pages ?? 2
+  const perPage = 50
+
+  const excludeTags = new Set(
+    config.marketFilters.excludeTags.map(t => t.toLowerCase())
+  )
+
+  // Fetch multiple pages of events
+  const allEvents: GammaEvent[] = []
+  for (let page = 0; page < pages; page++) {
+    const result = await fetchEvents({ limit: perPage, offset: page * perPage })
+    if (!result.ok) {
+      if (page === 0) return err(result.error)
+      break // partial results are fine for subsequent pages
+    }
+    allEvents.push(...result.data)
+    if (result.data.length < perPage) break // no more pages
+  }
+
+  const now = Date.now()
+  const markets: Market[] = []
+
+  for (const event of allEvents) {
+    // Filter out events with excluded tags
+    const eventTags = (event.tags ?? []).map(t => t.label.toLowerCase())
+    if (eventTags.some(tag => excludeTags.has(tag))) continue
+
+    // Pick the best market from this event: active, not closed, probability closest to 0.5
+    const candidates = (event.markets ?? [])
+      .filter(m => m.question && m.outcomePrices && m.active)
+
+    if (candidates.length === 0) continue
+
+    const scored = candidates.map(m => {
+      let probability = 0.5
+      try {
+        const prices = JSON.parse(m.outcomePrices) as number[]
+        probability = prices[0] ?? 0.5
+      } catch {
+        // fallback
+      }
+      // Distance from 0.5 — lower is more interesting
+      const uncertainty = Math.abs(probability - 0.5)
+      return { market: m, probability, uncertainty }
+    })
+
+    // Sort by uncertainty ascending (closest to 0.5 first), then by volume24hr descending as tiebreaker
+    scored.sort((a, b) => {
+      const diff = a.uncertainty - b.uncertainty
+      if (Math.abs(diff) > 0.01) return diff
+      return (b.market.volume24hr ?? 0) - (a.market.volume24hr ?? 0)
+    })
+
+    const best = scored[0]
+    const eventInfo = { id: event.id, title: event.title }
+    const market = gammaToMarket(best.market, eventInfo)
+
+    // Apply standard filters
+    if (new Date(market.endDate).getTime() <= now) continue
+    if (market.liquidity < config.marketFilters.minLiquidity) continue
+    if (market.volume < config.marketFilters.minVolume) continue
+    if (market.probability < config.marketFilters.minProbability) continue
+    if (market.probability > config.marketFilters.maxProbability) continue
+
+    markets.push(market)
+  }
+
+  // Sort by volume24hr descending
+  markets.sort((a, b) => (b.volume24hr ?? 0) - (a.volume24hr ?? 0))
+
+  return ok(markets.slice(0, limit))
 }
 
 export async function fetchMarketById(id: string): Promise<Result<Market>> {

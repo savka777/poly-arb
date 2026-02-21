@@ -48,6 +48,31 @@ export function getDb(): BetterSQLite3Database<typeof schema> {
       );
     `);
 
+    // Migrate: add new columns (safe to re-run — we catch duplicate column errors)
+    const migrations = [
+      `ALTER TABLE signals ADD COLUMN ev_net REAL`,
+      `ALTER TABLE signals ADD COLUMN costs TEXT`,
+      `ALTER TABLE signals ADD COLUMN features TEXT`,
+      `ALTER TABLE signals ADD COLUMN tradeable INTEGER`,
+      `ALTER TABLE signals ADD COLUMN p_hat_lb REAL`,
+      // Market table expansions for full sync
+      `ALTER TABLE markets ADD COLUMN volume_24hr REAL`,
+      `ALTER TABLE markets ADD COLUMN spread REAL`,
+      `ALTER TABLE markets ADD COLUMN clob_token_id TEXT`,
+      `ALTER TABLE markets ADD COLUMN event_id TEXT`,
+      `ALTER TABLE markets ADD COLUMN event_title TEXT`,
+      `ALTER TABLE markets ADD COLUMN tags TEXT`,
+      `ALTER TABLE markets ADD COLUMN one_day_price_change REAL`,
+      `ALTER TABLE markets ADD COLUMN synced_at TEXT`,
+    ];
+    for (const sql of migrations) {
+      try {
+        sqlite.exec(sql);
+      } catch {
+        // Column already exists — ignore
+      }
+    }
+
     _db = drizzle(sqlite, { schema });
   }
   return _db;

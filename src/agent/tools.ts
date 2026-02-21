@@ -1,3 +1,3 @@
-import { calculateEV, evToConfidence } from '@/intelligence/calculations';
+import { calculateNetEV, evToConfidence } from '@/intelligence/calculations';
 
-export { calculateEV, evToConfidence };
+export { calculateNetEV, evToConfidence };

@@ -1,5 +1,5 @@
 import { Annotation } from '@langchain/langgraph';
-import type { Market, NewsResult, Signal, Direction, ToolCallRecord } from '@/lib/types';
+import type { Market, NewsResult, Signal, Direction, ToolCallRecord, EVResult } from '@/lib/types';
 
 export const EventPodState = Annotation.Root({
   market: Annotation<Market>,
@@ -16,11 +16,7 @@ export const EventPodState = Annotation.Root({
     default: () => null,
     reducer: (_, next) => next,
   }),
-  divergence: Annotation<{
-    value: number;
-    direction: Direction;
-    significant: boolean;
-  } | null>({
+  divergence: Annotation<EVResult | null>({
     default: () => null,
     reducer: (_, next) => next,
   }),

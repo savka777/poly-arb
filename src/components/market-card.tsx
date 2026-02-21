@@ -32,7 +32,8 @@ export function MarketCard({ market, signal, loading, watchlisted }: MarketCardP
   }
 
   const hasSignal = !!signal
-  const isBullish = signal && signal.ev > 0
+  const displayEv = signal?.evNet ?? signal?.ev ?? 0
+  const isBullish = signal && displayEv > 0
 
   return (
     <Link href={`/compare?add=${market.id}`}>
@@ -75,14 +76,16 @@ export function MarketCard({ market, signal, loading, watchlisted }: MarketCardP
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-darwin-text-secondary">EV</span>
+                <span className="text-xs text-darwin-text-secondary">
+                  EV{signal.evNet != null ? " (net)" : ""}
+                </span>
                 <span
                   className={cn(
                     "font-data text-sm font-medium",
                     isBullish ? "text-darwin-green" : "text-darwin-red"
                   )}
                 >
-                  {formatEV(signal.ev)}
+                  {formatEV(displayEv)}
                 </span>
               </div>
             </>
@@ -101,7 +104,14 @@ export function MarketCard({ market, signal, loading, watchlisted }: MarketCardP
 
         {hasSignal && (
           <div className="flex items-center justify-between pt-1">
-            <SignalBadge confidence={signal.confidence} />
+            <div className="flex items-center gap-1.5">
+              <SignalBadge confidence={signal.confidence} />
+              {signal.tradeable && (
+                <span className="inline-flex items-center justify-center rounded-sm bg-darwin-green/15 px-1 py-0.5 text-[9px] font-bold text-darwin-green leading-none">
+                  T
+                </span>
+              )}
+            </div>
             <span className="text-[11px] text-darwin-text-muted">
               {relativeTime(signal.createdAt)}
             </span>

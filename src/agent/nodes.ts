@@ -3,8 +3,8 @@ import { generateObject } from 'ai';
 import { nanoid } from 'nanoid';
 import { model } from '@/lib/model';
 import { config } from '@/lib/config';
-import { searchNews } from '@/data/valyu';
-import { calculateEV, evToConfidence } from '@/agent/tools';
+import { searchNews, buildNewsQuery } from '@/data/valyu';
+import { calculateNetEV, evToConfidence } from '@/intelligence/calculations';
 import { saveSignal } from '@/store/signals';
 import type { EventPodStateType } from './state';
 import type { Signal, ToolCallRecord } from '@/lib/types';
@@ -15,7 +15,7 @@ export async function fetchNewsNode(
   state: EventPodStateType,
 ): Promise<Partial<EventPodStateType>> {
   const startTime = new Date().toISOString();
-  const query = state.market.question;
+  const query = buildNewsQuery(state.market.question);
 
   const result = await searchNews(query, 5);
 
@@ -62,38 +62,42 @@ export async function estimateProbabilityNode(
   const startTime = new Date().toISOString();
 
   const newsContext = state.newsResults
-    .map((n) => `[${n.source}] ${n.title}\n${n.content}`)
+    .map((n) => `[${n.source}] ${n.title}\n${n.content.slice(0, 600)}`)
     .join('\n\n');
 
   const currentDate = new Date().toISOString().split('T')[0];
+
+  const systemPrompt = `You are a calibrated probability analyst specializing in prediction markets. Your job is to estimate the true probability of events based on recent news evidence.
+
+Calibration rules:
+- Your estimates must be well-calibrated: when you say 0.70, the event should resolve YES roughly 70% of the time.
+- Base your estimate ONLY on the news evidence provided. Do NOT anchor to any prior expectation.
+- Consider the time horizon: news impact decays as the resolution date approaches.
+- If the evidence is ambiguous or insufficient, reflect that uncertainty with a probability closer to 0.50.
+- Always cite specific news events in your reasoning.
+- Distinguish between events that are very likely (>0.85) vs certain (>0.95) — extreme probabilities require extraordinary evidence.`;
 
   const prompt = `Given the following prediction market question and recent news, estimate the probability that this question resolves YES.
 
 Today's date: ${currentDate}
 Question: ${state.market.question}
 
-Current market price: ${(state.market.probability * 100).toFixed(1)}%
 Market end date: ${state.market.endDate}
 
 Recent News:
 ${newsContext}
 
 Respond with:
-- probability: a number between 0 and 1 representing your best estimate
-- reasoning: 2-3 sentences explaining your estimate
+- probability: a number between 0 and 1 representing your best estimate based ONLY on the news evidence
+- reasoning: 2-3 sentences explaining your estimate, citing specific news
 - confidence: "low", "medium", or "high" based on how much relevant evidence you found
-- keyFactors: array of 2-4 key factors influencing your estimate
-
-Rules:
-- Be calibrated: a 0.70 estimate means you'd be wrong 30% of the time
-- Consider the market's end date - news impact decays as resolution approaches
-- Always cite specific news events in your reasoning
-- If news is ambiguous, stay close to the market price`;
+- keyFactors: array of 2-4 key factors influencing your estimate`;
 
   try {
     const { object } = await generateObject({
       model,
       schema: probabilityEstimateSchema,
+      system: systemPrompt,
       prompt,
     });
 
@@ -156,31 +160,33 @@ export async function calculateDivergenceNode(
     };
   }
 
-  const { ev, direction } = calculateEV(
-    state.probabilityEstimate.probability,
-    state.market.probability,
-  );
-
-  const significant = Math.abs(ev) >= config.evThreshold;
-
-  const divergenceResult = {
-    value: ev,
-    direction,
-    significant,
-  };
+  const evResult = calculateNetEV({
+    llmEstimate: state.probabilityEstimate.probability,
+    marketPrice: state.market.probability,
+    endDate: state.market.endDate,
+    liquidity: state.market.liquidity,
+  });
 
   const toolCall: ToolCallRecord = {
     name: 'calculatePriceDivergence',
     input: {
       estimatedProbability: state.probabilityEstimate.probability,
       marketPrice: state.market.probability,
+      endDate: state.market.endDate,
+      liquidity: state.market.liquidity,
     },
-    output: divergenceResult,
+    output: {
+      pHat: evResult.pHat,
+      evNet: evResult.evNet,
+      evNetLB: evResult.evNetLB,
+      costs: evResult.costs.total,
+      tradeable: evResult.tradeable,
+    },
     timestamp: startTime,
   };
 
   return {
-    divergence: divergenceResult,
+    divergence: evResult,
     toolCalls: [toolCall],
   };
 }
@@ -204,7 +210,8 @@ export async function generateSignalNode(
     };
   }
 
-  const confidence = evToConfidence(state.divergence.value);
+  const evResult = state.divergence;
+  const confidence = evToConfidence(evResult.evNet);
 
   const newsEvents = state.newsResults.map(
     (n) => `[${n.source}] ${n.title}`,
@@ -214,21 +221,25 @@ export async function generateSignalNode(
     id: nanoid(),
     marketId: state.market.id,
     marketQuestion: state.market.question,
-    darwinEstimate: state.probabilityEstimate.probability,
+    darwinEstimate: evResult.pHat,
     marketPrice: state.market.probability,
-    ev: state.divergence.value,
-    direction: state.divergence.direction,
+    ev: evResult.evNet,
+    direction: evResult.direction,
     reasoning: state.probabilityEstimate.reasoning,
     newsEvents,
     confidence,
     createdAt: new Date().toISOString(),
     expiresAt: state.market.endDate,
+    evNet: evResult.evNet,
+    costs: evResult.costs,
+    features: evResult.features,
+    tradeable: evResult.tradeable,
+    pHatLB: evResult.pHatLB,
   };
 
   try {
     saveSignal(signal);
   } catch (e) {
-    // Log but don't fail the node if persistence fails
     const errorMessage = e instanceof Error ? e.message : String(e);
     console.error(`Failed to persist signal: ${errorMessage}`);
   }
@@ -237,10 +248,12 @@ export async function generateSignalNode(
     name: 'generateSignal',
     input: {
       marketId: state.market.id,
-      ev: state.divergence.value,
-      direction: state.divergence.direction,
+      evNet: evResult.evNet,
+      evNetLB: evResult.evNetLB,
+      direction: evResult.direction,
+      tradeable: evResult.tradeable,
     },
-    output: { signalId: signal.id, confidence },
+    output: { signalId: signal.id, confidence, tradeable: evResult.tradeable },
     timestamp: startTime,
   };
 

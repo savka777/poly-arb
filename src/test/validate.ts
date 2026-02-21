@@ -1,6 +1,6 @@
 import { saveSignal, getSignals, getSignalsByMarket, getRecentSignals, getSignalCount } from '../store/signals';
 import { getMockMarkets, getMockNewsResults } from '../data/mock';
-import { calculateEV, evToConfidence } from '../intelligence/calculations';
+import { calculateNetEV, evToConfidence } from '../intelligence/calculations';
 import { nanoid } from 'nanoid';
 import type { Signal } from '../lib/types';
 
@@ -54,11 +54,14 @@ async function run() {
     );
   });
 
-  check('EV calculation works', () => {
-    const { ev, direction } = calculateEV(0.62, 0.45);
-    return (
-      Math.abs(ev - 0.17) < 0.001 && direction === 'yes'
-    );
+  check('Net EV calculation works', () => {
+    const result = calculateNetEV({
+      llmEstimate: 0.62,
+      marketPrice: 0.45,
+      endDate: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+      liquidity: 100_000,
+    });
+    return result.direction === 'yes' && result.evGross > 0;
   });
 
   check('EV to confidence mapping works', () => {

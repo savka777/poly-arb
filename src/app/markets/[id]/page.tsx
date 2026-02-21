@@ -149,7 +149,8 @@ export default function MarketDetailPage({
     )
   }
 
-  const isBullish = signal && signal.ev > 0
+  const displayEv = signal?.evNet ?? signal?.ev ?? 0
+  const isBullish = signal && displayEv > 0
 
   return (
     <div className="flex h-screen flex-col bg-darwin-bg">
@@ -233,10 +234,18 @@ export default function MarketDetailPage({
                     ? <TrendingUp className="h-3.5 w-3.5" />
                     : <TrendingDown className="h-3.5 w-3.5" />
                   }
-                  {formatEV(signal.ev)}
+                  {formatEV(displayEv)}
+                  {signal.evNet != null && (
+                    <span className="text-darwin-text-muted text-[10px] ml-1">(net)</span>
+                  )}
                 </span>
               )}
               {signal && <SignalBadge confidence={signal.confidence} />}
+              {signal?.tradeable && (
+                <span className="inline-flex items-center rounded-sm bg-darwin-green/15 px-1.5 py-0.5 text-[10px] font-medium text-darwin-green">
+                  Tradeable
+                </span>
+              )}
             </div>
           </div>
 
@@ -352,15 +361,47 @@ export default function MarketDetailPage({
                   </span>
                 </div>
                 <div>
-                  <span className="block label-caps !text-[9px]">EV</span>
+                  <span className="block label-caps !text-[9px]">EV {signal.evNet != null ? "(net)" : ""}</span>
                   <span className={cn(
                     "font-data text-sm font-medium",
                     isBullish ? "text-darwin-green" : "text-darwin-red"
                   )}>
-                    {formatEV(signal.ev)}
+                    {formatEV(displayEv)}
                   </span>
                 </div>
               </div>
+              {signal.costs && (
+                <div className="text-[10px] text-darwin-text-muted space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Costs</span>
+                    <span className="font-data">{(signal.costs.total * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between pl-2">
+                    <span>Fee</span>
+                    <span className="font-data">{(signal.costs.fee * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between pl-2">
+                    <span>Slippage</span>
+                    <span className="font-data">{(signal.costs.slippage * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between pl-2">
+                    <span>Resolution risk</span>
+                    <span className="font-data">{(signal.costs.resolutionRisk * 100).toFixed(1)}%</span>
+                  </div>
+                </div>
+              )}
+              {signal.tradeable != null && (
+                <div className="flex items-center gap-1.5">
+                  <span className={cn(
+                    "inline-flex items-center rounded-sm px-1.5 py-0.5 text-[10px] font-medium",
+                    signal.tradeable
+                      ? "bg-darwin-green/15 text-darwin-green"
+                      : "bg-darwin-red/10 text-darwin-text-muted"
+                  )}>
+                    {signal.tradeable ? "Tradeable" : "Below threshold"}
+                  </span>
+                </div>
+              )}
               <div className="border-t border-darwin-border pt-2">
                 <FairValueEditor
                   fairValue={fv.fairValue}

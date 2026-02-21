@@ -4,6 +4,55 @@
 > Read the latest entries before starting any work — this is how session N+1 knows what session N did.
 > Newest entries first.
 
+## [2026-02-21 XX:XX] Claude Opus 4.6
+
+### What Changed
+- **Architecture redesign:** Replaced blind-polling scanner + news-monitor with orchestrator + 3 watchers
+  - `src/scanner/orchestrator.ts` — priority queue, worker pool, adaptive cooldowns, per-market locks
+  - `src/scanner/watchers/price-watcher.ts` — polls Gamma, enqueues markets with >2% price change
+  - `src/scanner/watchers/news-watcher.ts` — keyword-based matching (no LLM), replaces old LLM-based matcher for initial filtering
+  - `src/scanner/watchers/time-watcher.ts` — enqueues near-expiry markets (<7d)
+- **Agent pipeline fixes (nodes.ts):**
+  - Removed anchoring bias — market price no longer shown to LLM
+  - Added system prompt with calibration rules
+  - Now uses `buildNewsQuery()` to clean market questions into search queries
+  - Truncates news content to 600 chars per article (was unlimited)
+- **EV calculation (calculations.ts):**
+  - W_NEWS lowered from 0.7 to 0.4 (configurable via env)
+  - Removed dead `calculateEV()` function
+  - Removed unused `odds` variable in `kellyFraction()`
+- **Data flow fixes:**
+  - `/api/markets` — removed silent mock fallback, now returns 502 on failure
+  - `/api/analyze` — added rate limiting (max 3 concurrent, 5/min)
+  - `store/signals.ts` — fixed `getSignalCount()` to use SQL COUNT instead of full table scan
+  - `store/signals.ts` — added `hasRecentSignal()` (shared dedup) and `pruneExpiredSignals()`
+  - `hooks/use-news-events.ts` — polling interval 10s -> 30s
+- **Types cleanup:** Removed `TradeProposal`, added `OrchestratorStatus`
+- **Config:** Added orchestrator, EV weight, rate limit, and cooldown env vars
+- **Health endpoint:** Wired to orchestrator instead of old scanner/news-monitor
+
+### Decisions Made
+- Kept old `scanner/index.ts` and `scanner/news-monitor.ts` intact (not deleted) as reference — health endpoint no longer imports them
+- Used keyword-based matching in news-watcher instead of LLM-based matching to avoid wasting LLM calls on pre-filtering
+- Chose in-memory priority queue over SQLite-backed queue for simplicity and speed
+- W_NEWS = 0.4 reflects that prediction markets are generally better-calibrated than individual LLM estimates
+
+### Now Unblocked
+- Full demo flow: grid -> detail -> analyze
+- Signal dedup works across orchestrator + manual analysis
+- Near-expiry markets get priority re-analysis
+
+### Known Issues
+- Orchestrator still starts from health endpoint (requires browser tab); should move to instrumentation file
+- Old scanner/news-monitor files are orphaned (can be deleted)
+- `MOCK_SIGNALS` in mock-data.ts still defined but unused
+
+### Next Up
+- Move orchestrator startup to Next.js instrumentation file
+- Add CLOB live price fetching before EV calculation
+- Update `docs/agents.md` to reflect new architecture
+- Delete old scanner/news-monitor once orchestrator is validated in production
+
 ---
 
 ## Entry Template
@@ -26,6 +75,145 @@
 ### Next Up
 - immediate next tasks
 ```
+
+---
+
+## [2026-02-22 02:30] News-First Monitor — Breaking News → Affected Markets → Signals
+
+### What Changed
+
+**New parallel pipeline** — the system was market-first only (scanner polls markets → fetches news → estimates → signals). This adds a news-first pipeline that runs alongside: poll Valyu for breaking news → LLM-match to active markets → trigger EV pipeline on matched markets. Catches fast-moving events where a headline drops before the market reprices.
+
+**Types — `src/lib/types.ts`:**
+- Added `NewsEvent` interface: `{ id, article: { title, url, source, content }, matchedMarkets: [{ marketId, question, relevance }], signalsGenerated: string[], timestamp }`.
+- Added `NewsMonitorStatus` interface: `{ running, lastPollAt, articlesProcessed, signalsGenerated }`.
+- Added `newsMonitor?: NewsMonitorStatus` to `HealthResponse`.
+- Added `source?: 'scanner' | 'news-monitor'` to `Signal` for provenance tracking.
+
+**Config — `src/lib/config.ts`:**
+- Added `newsMonitor` section: `intervalMs` (30s default), `queries` (rotating list of broad search terms), `maxArticlesPerPoll` (10 default).
+
+**Market matcher — `src/intelligence/market-matcher.ts` (new):**
+- LLM-powered function using `generateObject` with zod schema. Takes a news article + list of active markets, returns high/medium matches with reasoning. Batches markets in groups of 50 to fit context window.
+
+**News events store — `src/store/news-events.ts` (new):**
+- In-memory ring buffer (last 100 events). `addNewsEvent()`, `getRecentNewsEvents(limit)`, `getNewsEventCount()`. No persistence — news events are ephemeral.
+
+**News monitor loop — `src/scanner/news-monitor.ts` (new):**
+- Mirrors `src/scanner/index.ts` pattern. Polls Valyu with rotating queries, deduplicates via `Set<string>` (title hash, capped at 500), caches active markets (60s TTL), calls `matchNewsToMarkets()` for each new article, triggers `runEventPod()` for each matched market. Exports `startNewsMonitor()`, `stopNewsMonitor()`, `getNewsMonitorStatus()`.
+
+**API route — `src/app/api/news-events/route.ts` (new):**
+- `GET /api/news-events?limit=N` — returns `{ events, total }` from ring buffer.
+
+**Health route — `src/app/api/health/route.ts`:**
+- Now calls `startNewsMonitor()` alongside `startScanner()`. Response includes `newsMonitor` status.
+
+**React Query hook — `src/hooks/use-news-events.ts` (new):**
+- `useNewsEvents(limit)` — polls `/api/news-events` every 10s. Follows `use-signals.ts` / `use-markets.ts` pattern.
+
+**News ticker — `src/components/news-ticker.tsx` (new):**
+- Horizontal bar between stats bar and filter bar. Shows latest headlines with source tags, timestamps. Color-coded dots: green (signal generated), blue (matched markets), gray (unmatched). Pulsing red "LIVE" indicator when monitor is running. Click opens feed panel.
+
+**News feed panel — `src/components/news-feed.tsx` (new):**
+- Collapsible panel toggled via "News" button in header. Reverse-chronological list of news event cards. Each card: source badge, headline (linked), timestamp, matched markets with links, signal count. Follows `analysis-feed.tsx` design: `darwin-card` bg, `darwin-border`, `border-l-2` accent (green for signals, blue for matches).
+
+**Main page — `src/app/page.tsx`:**
+- Added `useNewsEvents()` hook. Added "News" toggle button in header (next to Compare). Inserted `NewsTicker` between stats bar and filter bar. Inserted `NewsFeed` panel (collapsible) below header.
+
+**Env — `.env.example`:**
+- Documented `NEWS_MONITOR_INTERVAL_MS`, `NEWS_MONITOR_QUERIES`, `NEWS_MONITOR_MAX_ARTICLES_PER_POLL`.
+
+### Decisions Made
+- **Parallel pipeline, not replacement** — the existing market scanner continues for slow-moving divergences. The news monitor catches fast-moving events. Both write to the same signal store.
+- **News monitor triggers `runEventPod()` directly** — the value of the news monitor is in *selecting which markets to analyze at the right time*, not in replacing the analysis pipeline. The existing pipeline already fetches news and generates signals.
+- **In-memory ring buffer, no DB** — news events are ephemeral/real-time. No value in persisting stale articles across restarts. 100-event cap keeps memory bounded.
+- **Dedup by title prefix** — `title.toLowerCase().slice(0, 100)` as key. Simple but effective for preventing re-processing the same article across polls.
+- **Market cache with 60s TTL** — avoids hammering Polymarket API on every article. Markets don't change that frequently.
+- **LLM-powered matching over keyword matching** — keyword matching would miss semantic connections (e.g., "Fed raises rates" affecting "Will S&P 500 reach 6000?"). The LLM can reason about causal relationships.
+
+### Now Unblocked
+- Real-time news-driven signal generation — breaking events trigger analysis within seconds
+- News feed UI — users can see what the system is detecting and which markets it matched
+- Signal provenance — `source` field on Signal distinguishes scanner vs news-monitor origin
+- Tunable via env vars — poll frequency, search queries, articles per poll
+
+### Known Issues
+- `Signal.source` is added to the type but `generateSignalNode` doesn't set it yet — signals from both pipelines will have `source: undefined` until the node is updated to accept a source parameter.
+- News monitor and scanner can both trigger `runEventPod()` on the same market simultaneously — no lock/dedup between them. In practice this is harmless (duplicate signals with slightly different timestamps) but could waste API calls.
+- LLM matching cost — every new article triggers an LLM call to match against all active markets. At 10 articles/poll and 30s intervals, this is ~20 LLM calls/minute for matching alone. Monitor the Vertex AI bill.
+
+### Next Up
+- Wire `source` field through `generateSignalNode` so signals have provenance
+- Add dedup between scanner and news monitor (skip `runEventPod` if signal exists for that market within TTL)
+- Consider filtering news monitor results by relevance score before LLM matching
+- UI: show signal source badge on market cards
+
+---
+
+## [2026-02-22 01:00] Math-First EV Calculation — Bayesian Logit-Space Engine
+
+### What Changed
+
+**Core math engine — `src/intelligence/calculations.ts` (rewritten):**
+- Replaced naive `ev = llmEstimate - marketPrice` with a Bayesian logit-space framework. The market price is now treated as the **prior**, and the LLM's estimate is one **feature input** rather than ground truth.
+- **Math primitives:** `logit(p) = ln(p/(1-p))`, `sigmoid(x) = 1/(1+e^(-x))`, `clamp(p)` to avoid log(0). All probability math happens in log-odds space where additive combination is statistically valid (unlike raw probability space).
+- **News feature** `z_n = logit(llmEstimate) - logit(marketPrice)`: measures how far the LLM thinks the market has moved, in log-odds. A 10% shift near 50% is smaller in log-odds than a 10% shift near 90% — this correctly captures that tail movements are more informative.
+- **Time feature** `z_t = -1/(1 + daysLeft/30)`: a negative feature that pulls the combined estimate back toward the market price as expiry approaches. At 30 days out z_t ≈ -0.5, at 1 day out z_t ≈ -0.97. Rationale: as resolution nears, the market has had more time to incorporate all information, so our edge shrinks.
+- **Logit-space combination:** `logit(p_hat) = logit(p_market) + w_n * z_n + w_t * z_t`. Features are weighted (w_n=0.7, w_t=0.3) and summed in log-odds, then converted back via sigmoid. This is equivalent to a log-linear model and avoids the boundary problems of naive probability addition.
+- **Confidence lower bound:** `p_hat_LB = sigmoid(logit(p_m) + 0.5 * shift)` — halves the total shift to get a conservative estimate. Only signals where even this conservative bound beats costs are considered tradeable.
+- **Cost estimation** `estimateCosts()`: fee (2% on winnings — Polymarket standard), slippage (3%/1%/0.5% bucketed by liquidity <$10k/<$100k/else), resolution risk (10%/3%/1% bucketed by days to expiry <1d/<7d/else), latency decay (0.5% fixed). Total cost is subtracted from gross EV.
+- **Net EV:** `evNet = (p_hat - p_market) - costs.total`. The EV after real trading friction.
+- **Tradeability gate:** `tradeable = evNetLB > 0` — only signals where the *lower-bound* net EV is positive survive. This replaces the old `|ev| >= threshold` check, which had no cost awareness.
+- **Kelly fraction** (for future use): half-Kelly sizing `f = 0.5 * max(edge / (1-p), 0)`, capped at 1.
+- Legacy `calculateEV()` and `evToConfidence()` kept for backward compatibility.
+
+**Types — `src/lib/types.ts`:**
+- Added `CostBreakdown` interface: `{ fee, slippage, latencyDecay, resolutionRisk, total }`.
+- Added `EVResult` interface: `{ pHat, pHatLB, evGross, evNet, evNetLB, direction, costs, features, tradeable }`.
+- Extended `Signal` with optional fields: `evNet`, `costs`, `features`, `tradeable`, `pHatLB`. All optional for backward compatibility with existing signals in the DB.
+
+**Agent pipeline — `src/agent/state.ts`, `src/agent/nodes.ts`, `src/agent/graph.ts`:**
+- `divergence` annotation type changed from `{ value, direction, significant }` to `EVResult`. The full math result flows through the graph.
+- `calculateDivergenceNode` now calls `calculateNetEV({ llmEstimate, marketPrice, endDate, liquidity })` — uses market endDate and liquidity for cost/time features, not just the two probabilities.
+- `generateSignalNode` populates new Signal fields from EVResult. `signal.darwinEstimate` is now `pHat` (logit-combined) not the raw LLM output. `signal.ev` is `evNet` (after costs).
+- `shouldContinueAfterDivergence` checks `divergence.tradeable` instead of `divergence.significant`. The graph only generates a signal if lower-bound EV survives costs.
+
+**Database — `src/db/schema.ts`, `src/db/index.ts`, `src/store/signals.ts`:**
+- Schema: 5 new nullable columns — `ev_net REAL`, `costs TEXT` (JSON), `features TEXT` (JSON), `tradeable INTEGER` (0/1), `p_hat_lb REAL`.
+- Migration: `ALTER TABLE signals ADD COLUMN ...` statements with error swallowing (idempotent — safe to re-run if columns already exist).
+- `signalToRow`/`rowToSignal`: serialize `costs` and `features` as JSON strings, handle null for backward-compatible reads of old signals.
+
+**UI — `src/app/markets/[id]/page.tsx`, `src/components/market-card.tsx`:**
+- Market detail: EV display uses `evNet ?? ev` (backward compatible). Shows "(net)" label when new data available. Added costs breakdown section (fee, slippage, resolution risk percentages). Added "Tradeable" / "Below threshold" badge.
+- Market card: EV display uses `evNet ?? ev`. Shows "EV (net)" label. Added green "T" badge next to confidence badge for tradeable signals.
+
+**Config — `.env.example`:**
+- Added documentation note about `W_NEWS` / `W_TIME` weights (currently hardcoded, env override planned).
+
+### Decisions Made
+- **Log-odds space for combination** — adding probabilities directly (0.6 + 0.1 = 0.7) is not statistically valid. Log-odds are additive under the log-linear model, so `logit(prior) + feature_shifts` is the correct way to combine evidence with a prior. This is the same math behind logistic regression.
+- **Market price as prior, not LLM as ground truth** — the old approach trusted the LLM's probability estimate at face value. The new approach starts from the market price (which reflects all public information) and only shifts it based on the *relative difference* the LLM sees. If the LLM and market agree, EV ≈ 0 regardless of price level.
+- **Conservative lower bound via half-shift** — rather than building a full posterior distribution (which requires calibration data we don't have), we use a simple heuristic: the lower bound uses half the logit-space shift. This means we need roughly 2x the edge to clear the tradeability gate.
+- **Costs are subtracted, not ignored** — the old EV was gross (before fees). A signal showing +5% EV with 4.5% costs is barely worth acting on. The new system surfaces this clearly.
+- **Feature weights are fixed for now** — w_n=0.7, w_t=0.3. These should eventually be calibrated on historical signal accuracy, but hardcoded is fine until we have that data.
+- **`tradeable` replaces `significant`** — the concept changed from "is the EV large enough" (arbitrary threshold) to "does the lower-bound EV survive real costs" (quantitative gate). The old `EV_THRESHOLD` config is no longer used for the gate — it could be repurposed for display filtering.
+
+### Now Unblocked
+- Signals now reflect real trading economics — only actionable signals survive
+- Cost-adjusted backtesting (when historical resolution data available)
+- Kelly-based position sizing (function exists, needs integration with execution layer)
+- Weight calibration (collect signal accuracy data → fit w_n, w_t)
+
+### Known Issues
+- `EV_THRESHOLD` in config is no longer used as the tradeable gate — old code referencing it for filtering still works but is conceptually superseded by `tradeable`. Could be cleaned up.
+- Feature weights (0.7 / 0.3) are not yet configurable via env vars — hardcoded in calculations.ts.
+- `kellyFraction()` computes `odds` but doesn't use it (dead variable) — harmless, but should be cleaned up if the function is put into production use.
+- Existing signals in the DB will have null for all new fields — `rowToSignal` handles this gracefully, but UI will show old-style EV for those signals.
+
+### Next Up
+- Verify full demo flow with the new EV engine (scanner should show net EV and filter out sub-threshold signals)
+- Consider adding env var overrides for w_n / w_t
+- Calibration data collection: log predicted vs actual outcomes for weight tuning
 
 ---
 

@@ -1,22 +1,29 @@
 import { NextResponse } from "next/server"
 import type { HealthResponse } from "@/lib/types"
 import { getSignalCount, getLatestSignalTimestamp } from "@/store/signals"
-import { startScanner, getScannerStatus } from "@/scanner"
+import { startOrchestrator, getOrchestratorStatus } from "@/scanner/orchestrator"
 
 const startTime = Date.now()
 
 export async function GET() {
-  // Ensure scanner is running on first health check
-  startScanner()
+  // Ensure orchestrator is running on first health check
+  startOrchestrator()
 
-  const scannerStatus = getScannerStatus()
+  const orchestratorStatus = getOrchestratorStatus()
 
   const response: HealthResponse = {
     status: "ok",
     uptime: Math.floor((Date.now() - startTime) / 1000),
-    lastScanAt: scannerStatus.lastScanAt ?? getLatestSignalTimestamp(),
+    lastScanAt: getLatestSignalTimestamp(),
     signalCount: getSignalCount(),
-    scanner: scannerStatus,
+    scanner: {
+      running: orchestratorStatus.running,
+      lastScanAt: getLatestSignalTimestamp(),
+      marketsScanned: orchestratorStatus.totalAnalyzed,
+      signalsGenerated: orchestratorStatus.totalSignals,
+      nextScanAt: null,
+    },
+    orchestrator: orchestratorStatus,
   }
   return NextResponse.json(response)
 }

@@ -2,6 +2,26 @@ export type Direction = "yes" | "no"
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
+export interface CostBreakdown {
+  fee: number
+  slippage: number
+  latencyDecay: number
+  resolutionRisk: number
+  total: number
+}
+
+export interface EVResult {
+  pHat: number
+  pHatLB: number
+  evGross: number
+  evNet: number
+  evNetLB: number
+  direction: Direction
+  costs: CostBreakdown
+  features: { zNews: number; zTime: number }
+  tradeable: boolean
+}
+
 export interface Market {
   id: string
   platform: "polymarket"
@@ -17,6 +37,16 @@ export interface Market {
   spread?: number
   oneDayPriceChange?: number
   volume24hr?: number
+  event?: { id: string; title: string }
+}
+
+export interface PolymarketEvent {
+  id: string
+  title: string
+  slug: string
+  volume24hr: number
+  tags: string[]
+  marketCount: number
 }
 
 export interface Signal {
@@ -32,6 +62,12 @@ export interface Signal {
   confidence: "low" | "medium" | "high"
   createdAt: string
   expiresAt: string
+  evNet?: number
+  costs?: CostBreakdown
+  features?: { zNews: number; zTime: number }
+  tradeable?: boolean
+  pHatLB?: number
+  source?: "scanner" | "news-monitor"
 }
 
 export interface NewsResult {
@@ -40,19 +76,6 @@ export interface NewsResult {
   content: string
   source: string
   relevanceScore: number
-}
-
-export interface TradeProposal {
-  id: string
-  marketId: string
-  platform: "polymarket"
-  direction: Direction
-  confidence: number
-  estimatedProbability: number
-  marketProbability: number
-  ev: number
-  reasoning: string
-  timestamp: string
 }
 
 export interface ToolCallRecord {
@@ -73,18 +96,81 @@ export interface ScannerStatus {
   nextScanAt: string | null
 }
 
+export interface NewsEvent {
+  id: string
+  article: { title: string; url: string; source: string; content: string }
+  matchedMarkets: Array<{ marketId: string; question: string; relevance: string }>
+  signalsGenerated: string[]
+  timestamp: string
+}
+
+export interface NewsMonitorStatus {
+  running: boolean
+  lastPollAt: string | null
+  articlesProcessed: number
+  signalsGenerated: number
+}
+
+export interface OrchestratorStatus {
+  running: boolean
+  queueSize: number
+  activeWorkers: number
+  totalAnalyzed: number
+  totalSignals: number
+  watchers: {
+    price: { running: boolean; trackedMarkets: number }
+    news: { running: boolean; lastPollAt: string | null }
+    time: { running: boolean; trackedMarkets: number }
+  }
+  rss?: {
+    running: boolean
+    feedCount: number
+    lastPollAt: string | null
+    totalArticlesSeen: number
+    totalMatches: number
+  }
+}
+
 export interface HealthResponse {
   status: "ok" | "error"
   uptime: number
   lastScanAt: string | null
   signalCount: number
   scanner: ScannerStatus
+  orchestrator?: OrchestratorStatus
+  newsMonitor?: NewsMonitorStatus
 }
 
 export interface MarketsResponse {
   markets: Market[]
   total: number
+  page: number
+  pageSize: number
+  totalPages: number
   lastFetchedAt: string
+}
+
+export type ActivitySource = 'orchestrator' | 'price-watcher' | 'news-watcher' | 'time-watcher' | 'analyze' | 'sync'
+export type ActivityLevel = 'info' | 'warn' | 'error'
+
+export interface ActivityEntry {
+  id: string
+  timestamp: string
+  source: ActivitySource
+  level: ActivityLevel
+  message: string
+  details?: Record<string, unknown>
+}
+
+export interface ActivityResponse {
+  entries: ActivityEntry[]
+  total: number
+}
+
+export interface SyncStatus {
+  lastSyncAt: string | null
+  totalMarkets: number
+  syncInProgress: boolean
 }
 
 export interface MarketDetailResponse {

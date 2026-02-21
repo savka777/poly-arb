@@ -1,4 +1,4 @@
-import { fetchMarkets, fetchMarketById } from '@/data/polymarket';
+import { fetchTrendingMarkets, fetchMarketById } from '@/data/polymarket';
 import { runEventPod } from '@/agent/graph';
 import { getWatchlist } from '@/store/watchlist';
 import { getSignalsByMarket } from '@/store/signals';
@@ -73,9 +73,10 @@ async function runScanCycle(): Promise<void> {
   try {
     console.log('[scanner] Starting scan cycle...');
 
-    // Fetch markets
-    const marketsResult = await fetchMarkets({
+    // Fetch trending markets (events-based, excludes sports)
+    const marketsResult = await fetchTrendingMarkets({
       limit: config.scanner.marketsPerCycle,
+      pages: 2,
     });
     if (!marketsResult.ok) {
       console.error('[scanner] Failed to fetch markets:', marketsResult.error);

@@ -20,7 +20,7 @@ function shouldContinueAfterDivergence(
   state: EventPodStateType,
 ): 'generateSignal' | typeof END {
   if (!state.divergence) return END;
-  if (!state.divergence.significant) return END;
+  if (!state.divergence.tradeable) return END;
   return 'generateSignal';
 }
 

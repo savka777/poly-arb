@@ -1,4 +1,4 @@
-import { sqliteTable, text, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, real, integer } from 'drizzle-orm/sqlite-core';
 
 export const signals = sqliteTable('signals', {
   id: text('id').primaryKey(),
@@ -13,6 +13,11 @@ export const signals = sqliteTable('signals', {
   confidence: text('confidence', { enum: ['low', 'medium', 'high'] }).notNull(),
   createdAt: text('created_at').notNull(),
   expiresAt: text('expires_at').notNull(),
+  evNet: real('ev_net'),
+  costs: text('costs'), // JSON string
+  features: text('features'), // JSON string
+  tradeable: integer('tradeable', { mode: 'boolean' }),
+  pHatLb: real('p_hat_lb'),
 });
 
 export const markets = sqliteTable('markets', {
@@ -25,6 +30,14 @@ export const markets = sqliteTable('markets', {
   url: text('url').notNull(),
   category: text('category'),
   lastUpdated: text('last_updated').notNull(),
+  volume24hr: real('volume_24hr'),
+  spread: real('spread'),
+  clobTokenId: text('clob_token_id'),
+  eventId: text('event_id'),
+  eventTitle: text('event_title'),
+  tags: text('tags'), // JSON array
+  oneDayPriceChange: real('one_day_price_change'),
+  syncedAt: text('synced_at'),
 });
 
 export const watchlist = sqliteTable('watchlist', {
