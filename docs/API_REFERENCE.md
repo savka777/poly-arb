@@ -138,55 +138,7 @@ interface KalshiMarket {
 
 ---
 
-## 4. Metaculus
-
-**Base URL:** `https://www.metaculus.com/api2`
-**Auth:** None required for public questions
-**Rate Limit:** ~60 requests/minute
-**Last verified:** Feb 2026
-
-### Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/questions/` | List questions with search and filters |
-| GET | `/questions/{id}/` | Single question details |
-| GET | `/questions/{id}/predictions/` | Community prediction history |
-
-### Key Response Shape
-
-```typescript
-interface MetaculusQuestion {
-  id: number
-  title: string
-  url: string
-  created_time: string
-  publish_time: string
-  close_time: string
-  resolve_time: string
-  possibilities: {
-    type: string           // "binary"
-  }
-  community_prediction: {
-    full: {
-      q2: number           // median prediction (0-1 for binary)
-    }
-  }
-  number_of_predictions: number
-  status: string           // "open" | "closed" | "resolved"
-}
-```
-
-### Notes
-
-- Community prediction `q2` is the median — use as current probability
-- Binary questions only for matching with prediction markets
-- Filter with `?type=question&status=open` for active binary questions
-- Response is paginated with `next` URL field
-
----
-
-## 5. Valyu
+## 4. Valyu
 
 **Base URL:** `https://api.valyu.network/v1`
 **Auth:** API key via `x-api-key` header
@@ -228,7 +180,7 @@ interface ValyuSearchResponse {
 
 ### Notes
 
-- Used by the LLM estimator and news-lag strategy for research context
+- Used by event pod agents and shared tools for research context
 - POST request with JSON body
 - Auth: `x-api-key: <VALYU_API_KEY>`
 - Use `search_type: 'all'` for broadest coverage
@@ -257,10 +209,11 @@ All API responses should be normalized to the shared `Market` interface:
 ```typescript
 interface Market {
   id: string
-  platform: 'polymarket' | 'kalshi' | 'metaculus'
+  platform: 'polymarket' | 'kalshi'
   question: string
   probability: number     // 0-1
   volume: number          // USD
+  liquidity: number       // USD
   endDate: string         // ISO 8601
   url: string
   category?: string
@@ -270,5 +223,4 @@ interface Market {
 
 Platform-specific normalization notes:
 - **Kalshi:** `yes_bid / 100` for probability
-- **Metaculus:** `community_prediction.full.q2` for probability
 - **Polymarket:** YES token `price` for probability
