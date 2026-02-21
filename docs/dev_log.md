@@ -29,6 +29,52 @@
 
 ---
 
+## [2026-02-21 18:00] Full API Smoke Test — All Green
+
+### What Changed
+- **Rotated:** Valyu API key — new key in `.env` (`val_3495...`)
+- **Verified:** all three external APIs pass smoke test (`scripts/test-apis.ts`)
+
+### Test Output
+```
+── Gamma API ─────────────────────────────────
+  ✓ fetchMarkets: 5 markets returned
+     First market: "Will Trump deport 250,000-500,000 people?"
+     probability=0.9390  liquidity=$7290  volume=$7,509,996
+     conditionId=0x49686d26fb712515cd5e12c23f0a1c7e10214c7faa3cb0a730aabe0c33694082
+  ✓ fetchMarketById(517311): confirmed
+
+── CLOB API ──────────────────────────────────
+  ✓ fetchTokenPrice YES: price=0.9270
+  ✓ fetchOrderBook YES: 43 bids, 16 asks
+
+── Valyu API ─────────────────────────────────
+  query: "Trump deport 250,000-500,000 people"
+  ✓ searchNews: 3 results
+     • "Trump Administration Moves to Deport More Than 500,000..."
+     • "Thanks to President Trump and Secretary Noem, More than 2.5M..."
+```
+
+### Decisions Made
+- Run test with: `set -a && source .env && set +a && npx tsx scripts/test-apis.ts`
+- Valyu new key format: `val_<hex>` (longer format than old key)
+
+### Now Unblocked
+- Sprint 1 agent layer: `src/lib/model.ts`, `src/agent/`, `src/tools/`, `src/store/memory.ts`
+- All data inputs confirmed working — agent can be built against real live data
+
+### Known Issues
+- None — all three APIs operational
+
+### Next Up
+- Initialize Next.js project (`package.json`, `tsconfig.json`, `next.config.js`, `tailwind.config.js`)
+- `src/lib/model.ts` — Vercel AI SDK `callLLM` wrapper (Anthropic key now in `.env`)
+- `src/agent/types.ts` + `src/agent/create-agent.ts` + `src/agent/execute.ts`
+- `src/tools/shared.ts` + `src/tools/event-pod.ts`
+- `src/store/memory.ts`
+
+---
+
 ## [2026-02-21 17:00] Git History Rewrite + Branch Push
 
 ### What Changed

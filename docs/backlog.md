@@ -26,7 +26,7 @@
 - [x] All wrappers return `Result<T>`, never throw
 - [x] Normalization: `GammaMarket` -> `Market` mapping (`gammaToMarket`)
 - [x] Exponential backoff on rate limits (4 attempts: 0/1/2/4s)
-- [x] **Gate:** real data fetches return valid typed responses _(Gamma ✓ CLOB ✓ live-verified)_
+- [x] **Gate:** real data fetches return valid typed responses _(Gamma ✓ CLOB ✓ Valyu ✓ all live-verified 2026-02-21)_
 
 ### Agent + Tools (Sprint 1, Hours 8-16)
 
