@@ -117,7 +117,7 @@ export function ComparePanel({
   return (
     <motion.div
       className={cn(
-        "flex h-full flex-col bg-darwin-card",
+        "flex h-full min-h-0 flex-col bg-darwin-card overflow-hidden",
         dragOver && "ring-2 ring-inset ring-darwin-blue/50 bg-darwin-blue/5"
       )}
       animate={{
@@ -180,7 +180,7 @@ export function ComparePanel({
       />
 
       {/* Chart */}
-      <div className="flex-1 bg-darwin-bg">
+      <div className="flex-1 min-h-0 bg-darwin-bg">
         <LightweightChart
           data={chartData}
           ohlcData={candleData}

@@ -23,4 +23,25 @@ export const config = {
   pollIntervalMs: envInt("NEXT_PUBLIC_POLL_INTERVAL_MS", 30_000),
   cycleIntervalMs: envInt("CYCLE_INTERVAL_MS", 300_000),
   evThreshold: envFloat("EV_THRESHOLD", 0.05),
-} as const
+
+  /** Market filters — controls which markets the scanner targets */
+  marketFilters: {
+    /** Minimum liquidity in USD */
+    minLiquidity: envFloat("MARKET_MIN_LIQUIDITY", 0),
+    /** Minimum total volume in USD */
+    minVolume: envFloat("MARKET_MIN_VOLUME", 0),
+    /** Skip near-impossible markets (probability below this threshold) */
+    minProbability: envFloat("MARKET_MIN_PROBABILITY", 0.05),
+    /** Skip near-certain markets (probability above this threshold) */
+    maxProbability: envFloat("MARKET_MAX_PROBABILITY", 0.95),
+  },
+
+  /** Strategy selection — which strategies to run */
+  strategies: {
+    /** Enabled strategies, parsed from comma-separated env var */
+    enabled: env("ENABLED_STRATEGIES", "ev")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  },
+}

@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { chartEventBus, type CrosshairEvent } from "@/lib/chart-events"
-import type { IChartApi, ISeriesApi, UTCTimestamp } from "lightweight-charts"
+import { chartEventBus, type CrosshairEvent, type VisibleRangeEvent } from "@/lib/chart-events"
+import type { IChartApi, ISeriesApi, UTCTimestamp, LogicalRange } from "lightweight-charts"
 
 export function useCrosshairSync(
   chartRef: React.RefObject<IChartApi | null>,
@@ -10,7 +10,8 @@ export function useCrosshairSync(
   panelId: string,
   enabled: boolean
 ): void {
-  const subscribedRef = useRef(false)
+  // Guard against re-entrant range updates
+  const isSyncingRange = useRef(false)
 
   useEffect(() => {
     if (!enabled) return
@@ -18,7 +19,7 @@ export function useCrosshairSync(
     const chart = chartRef.current
     if (!chart) return
 
-    // Emit crosshair moves from this chart
+    // --- Crosshair sync ---
     chart.subscribeCrosshairMove((param) => {
       if (!param.time) {
         chartEventBus.emit("crosshair", {
@@ -49,7 +50,7 @@ export function useCrosshairSync(
     })
 
     // Listen for crosshair events from other charts
-    const unsubscribe = chartEventBus.on("crosshair", (event: CrosshairEvent) => {
+    const unsubCrosshair = chartEventBus.on("crosshair", (event: CrosshairEvent) => {
       if (event.sourceId === panelId) return
       const c = chartRef.current
       const s = seriesRef.current
@@ -62,11 +63,36 @@ export function useCrosshairSync(
       }
     })
 
-    subscribedRef.current = true
+    // --- Visible range (scroll/zoom) sync ---
+    const onVisibleRangeChange = (range: LogicalRange | null) => {
+      if (isSyncingRange.current || !range) return
+      chartEventBus.emit("visibleRange", {
+        sourceId: panelId,
+        from: range.from,
+        to: range.to,
+      })
+    }
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleRangeChange)
+
+    const unsubRange = chartEventBus.on("visibleRange", (event: VisibleRangeEvent) => {
+      if (event.sourceId === panelId) return
+      const c = chartRef.current
+      if (!c) return
+
+      // Prevent re-entrant updates
+      isSyncingRange.current = true
+      c.timeScale().setVisibleLogicalRange({ from: event.from, to: event.to })
+      // Use requestAnimationFrame to reset flag after the range change propagates
+      requestAnimationFrame(() => {
+        isSyncingRange.current = false
+      })
+    })
 
     return () => {
-      unsubscribe()
-      subscribedRef.current = false
+      unsubCrosshair()
+      unsubRange()
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleRangeChange)
     }
   }, [chartRef, seriesRef, panelId, enabled])
 }

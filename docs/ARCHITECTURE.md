@@ -23,16 +23,16 @@
 │             └─────────────┬───────────────────┘                  │
 │                           ▼                                      │
 │              ┌────────────────────────┐                          │
-│              │   IN-MEMORY STORE      │                          │
-│              │   Map<string, Signal>  │                          │
+│              │   SQLITE + DRIZZLE    │                          │
+│              │   darwin.db           │                          │
 │              └───────────┬────────────┘                          │
 │                          ▼                                       │
 │              ┌────────────────────────┐                          │
 │              │   EVENT POD AGENT      │                          │
+│              │   (LangGraph StateGraph)│                          │
 │              │                        │                          │
-│              │   mandate + tools      │                          │
-│              │   generateText loop    │                          │
-│              │   max 10 iterations    │                          │
+│              │   fetchNews → estimate │                          │
+│              │   → divergence → signal│                          │
 │              └──┬──────────────────┬──┘                          │
 │                 │                  │                              │
 │                 ▼                  ▼                              │
@@ -57,8 +57,8 @@ Runs on interval (`CYCLE_INTERVAL_MS`, default 5 min):
 3. ANALYZE  → Event Pod agent runs tool-use loop on each market batch:
                fetchRecentNews → estimateEventProbability →
                calculatePriceDivergence → propose trade if |EV| > threshold
-4. STORE    → Signal objects written to in-memory Map
-5. SERVE    → API routes read from store → React Query polls → UI updates
+4. STORE    → Signal objects persisted to SQLite via Drizzle ORM
+5. SERVE    → API routes read from SQLite → React Query polls → UI updates
 ```
 
 ## Data Flow: On-Demand Analysis
@@ -69,7 +69,7 @@ User clicks "Analyze" on a market detail page:
 1. POST /api/analyze { marketId }
 2. API route fetches single market from Polymarket
 3. Event Pod agent runs full tool loop on that market
-4. Signal stored in memory
+4. Signal persisted to SQLite
 5. Signal returned to client
 ```
 
@@ -94,7 +94,7 @@ interface Market {
 }
 ```
 
-### `Signal` — agent output stored in memory (`src/lib/types.ts`)
+### `Signal` — agent output persisted to SQLite (`src/lib/types.ts`)
 
 ```typescript
 interface Signal {
@@ -113,7 +113,7 @@ interface Signal {
 }
 ```
 
-### `AgentOutput` — what the agent returns (`src/agent/types.ts`)
+### `AgentOutput` — what the agent returns (`src/lib/types.ts`)
 
 ```typescript
 interface AgentOutput {
@@ -160,11 +160,9 @@ A trade is proposed when `|EV| > EV_THRESHOLD` (default 0.05).
 Explicitly excluded to keep scope tight:
 
 - No Kalshi — Polymarket only
-- No SQLite / database — in-memory store
 - No arbitrage pod — single strategy
 - No time-series pod — single strategy
 - No risk manager — no position sizing, drawdown, concentration checks
 - No virtual trading engine — signals only, no paper trading
 - No WebSocket — polling via React Query
 - No authentication — public dashboard
-- No persistent storage — state resets on restart

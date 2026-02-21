@@ -117,11 +117,13 @@ function ToolCallEntry({ toolCall }: { toolCall: ToolCallRecord }) {
               )}
             />
             <span className="font-data text-sm text-darwin-blue">
-              {toolCall.toolName}
+              {toolCall.name ?? toolCall.toolName}
             </span>
-            <span className="text-[11px] text-darwin-text-muted">
-              {toolCall.durationMs}ms
-            </span>
+            {toolCall.durationMs != null && (
+              <span className="text-[11px] text-darwin-text-muted">
+                {toolCall.durationMs}ms
+              </span>
+            )}
           </div>
           <span className="text-[11px] text-darwin-text-muted">
             {relativeTime(toolCall.timestamp)}

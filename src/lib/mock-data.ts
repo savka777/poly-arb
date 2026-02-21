@@ -186,7 +186,7 @@ export const MOCK_SIGNALS: Signal[] = [
 export const MOCK_TOOL_CALLS: ToolCallRecord[] = [
   {
     id: "tc-1",
-    toolName: "fetchRecentNews",
+    name: "fetchRecentNews",
     input: { query: "Fed interest rate March 2026 FOMC", maxResults: 5 },
     output: {
       results: [
@@ -212,7 +212,7 @@ export const MOCK_TOOL_CALLS: ToolCallRecord[] = [
   },
   {
     id: "tc-2",
-    toolName: "estimateEventProbability",
+    name: "estimateEventProbability",
     input: {
       question: "Will the Fed cut interest rates at the March 2026 FOMC meeting?",
       newsContext: "CPI 2.1%, rising unemployment, Waller dovish signals",
@@ -232,7 +232,7 @@ export const MOCK_TOOL_CALLS: ToolCallRecord[] = [
   },
   {
     id: "tc-3",
-    toolName: "calculatePriceDivergence",
+    name: "calculatePriceDivergence",
     input: { estimatedProbability: 0.62, marketPrice: 0.42 },
     output: { divergence: 0.20, direction: "yes", significant: true },
     durationMs: 5,

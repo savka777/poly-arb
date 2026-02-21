@@ -1,12 +1,15 @@
 "use client"
 
-import { useState, useCallback, useRef, useEffect, type ReactNode, type MouseEvent } from "react"
+import React, { useState, useCallback, useRef, useEffect, type ReactNode, type MouseEvent } from "react"
+
+export type GridLayout = "auto" | "horizontal" | "vertical"
 
 interface ResizableGridProps {
   children: ReactNode[]
+  layout?: GridLayout
 }
 
-function getLayout(count: number): { cols: number; rows: number } {
+function getAutoLayout(count: number): { cols: number; rows: number } {
   if (count <= 1) return { cols: 1, rows: 1 }
   if (count <= 2) return { cols: 2, rows: 1 }
   if (count <= 4) return { cols: 2, rows: 2 }
@@ -14,9 +17,16 @@ function getLayout(count: number): { cols: number; rows: number } {
   return { cols: 4, rows: 2 }
 }
 
-export function ResizableGrid({ children }: ResizableGridProps) {
-  const count = children.length
-  const layout = getLayout(count)
+export function ResizableGrid({ children, layout: layoutMode = "auto" }: ResizableGridProps) {
+  const flatChildren = React.Children.toArray(children)
+  const count = flatChildren.length
+
+  const layout = layoutMode === "horizontal"
+    ? { cols: count, rows: 1 }
+    : layoutMode === "vertical"
+      ? { cols: 1, rows: count }
+      : getAutoLayout(count)
+
   const containerRef = useRef<HTMLDivElement>(null)
 
   const [colSplits, setColSplits] = useState<number[]>(() =>
@@ -26,7 +36,7 @@ export function ResizableGrid({ children }: ResizableGridProps) {
     Array(layout.rows).fill(1 / layout.rows)
   )
 
-  // Reset splits when layout dimensions change
+  // Reset splits when layout dimensions change and notify charts
   const prevLayoutRef = useRef({ cols: layout.cols, rows: layout.rows })
   useEffect(() => {
     const prev = prevLayoutRef.current
@@ -75,6 +85,7 @@ export function ResizableGrid({ children }: ResizableGridProps) {
             setRowSplits(newSplits)
           }
         }
+
       }
 
       const handleMouseUp = () => {
@@ -156,10 +167,10 @@ export function ResizableGrid({ children }: ResizableGridProps) {
         cells.push(
           <div
             key={`p-${panelIdx}`}
-            style={{ gridRow, gridColumn: gridCol }}
-            className="overflow-hidden"
+            style={{ gridRow, gridColumn: gridCol, minHeight: 0, minWidth: 0 }}
+            className="h-full w-full overflow-hidden"
           >
-            {children[panelIdx] ?? null}
+            {flatChildren[panelIdx] ?? null}
           </div>
         )
       }
@@ -169,11 +180,13 @@ export function ResizableGrid({ children }: ResizableGridProps) {
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-hidden"
+      className="flex-1 min-h-0 overflow-hidden"
       style={{
         display: "grid",
         gridTemplateColumns: colTemplate,
         gridTemplateRows: rowTemplate,
+        height: "100%",
+        minHeight: 0,
       }}
     >
       {cells}

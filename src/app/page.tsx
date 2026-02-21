@@ -5,6 +5,7 @@ import { Search, X, ArrowUpDown, TrendingUp, Flame, Clock } from "lucide-react"
 import { useMarkets } from "@/hooks/use-markets"
 import { useSignals } from "@/hooks/use-signals"
 import { useHealth } from "@/hooks/use-health"
+import { useWatchlist } from "@/hooks/use-watchlist"
 import { MarketCard } from "@/components/market-card"
 import { CompareLink } from "@/components/compare-link"
 import type { Market, Signal, SignalsResponse } from "@/lib/types"
@@ -91,6 +92,8 @@ export default function MarketGrid() {
   const { data: marketsData, isLoading: marketsLoading } = useMarkets()
   const { data: signalsData } = useSignals()
   const { data: health } = useHealth()
+  const { data: watchlistData } = useWatchlist()
+  const watchlistedIds = new Set(watchlistData?.marketIds ?? [])
 
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -348,6 +351,7 @@ export default function MarketGrid() {
                 key={market.id}
                 market={market}
                 signal={signalsByMarket.get(market.id)}
+                watchlisted={watchlistedIds.has(market.id)}
               />
             ))}
           </div>

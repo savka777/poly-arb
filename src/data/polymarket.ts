@@ -1,5 +1,6 @@
 import type { Market, Result } from "@/lib/types"
 import { ok, err } from "@/lib/result"
+import { config } from "@/lib/config"
 
 const GAMMA_BASE = "https://gamma-api.polymarket.com"
 const CLOB_BASE = "https://clob.polymarket.com"
@@ -21,6 +22,9 @@ interface GammaMarket {
   clobTokenIds: string // JSON-encoded: '["tokenId1", "tokenId2"]'
   category: string
   active: boolean
+  oneDayPriceChange?: number
+  volume24hr?: number
+  spread?: number
 }
 
 function gammaToMarket(gamma: GammaMarket): Market {
@@ -52,6 +56,9 @@ function gammaToMarket(gamma: GammaMarket): Market {
     category: gamma.category || undefined,
     lastUpdated: new Date().toISOString(),
     clobTokenId,
+    spread: gamma.spread,
+    oneDayPriceChange: gamma.oneDayPriceChange,
+    volume24hr: gamma.volume24hr,
   }
 }
 
@@ -94,6 +101,7 @@ async function fetchWithRetry(
 export async function fetchMarkets(options?: {
   limit?: number
   active?: boolean
+  minLiquidity?: number
 }): Promise<Result<Market[]>> {
   const limit = options?.limit ?? 50
   const active = options?.active ?? true
@@ -102,6 +110,7 @@ export async function fetchMarkets(options?: {
     limit: String(limit),
     active: String(active),
     closed: "false",
+    end_date_min: new Date().toISOString(),
   })
 
   const result = await fetchWithRetry(`${GAMMA_BASE}/markets?${params}`)
@@ -110,9 +119,25 @@ export async function fetchMarkets(options?: {
   try {
     const data = (await result.data.json()) as GammaMarket[]
 
+    const effectiveMinLiquidity = Math.max(
+      options?.minLiquidity ?? 0,
+      config.marketFilters.minLiquidity,
+    )
+    const now = Date.now()
+
     const markets = data
       .filter((m) => m.question && m.outcomePrices)
       .map(gammaToMarket)
+      .filter((m) => {
+        // Skip expired markets (safety net — end_date_min should handle this server-side)
+        if (new Date(m.endDate).getTime() <= now) return false
+        if (m.liquidity < effectiveMinLiquidity) return false
+        if (m.volume < config.marketFilters.minVolume) return false
+        if (m.probability < config.marketFilters.minProbability) return false
+        if (m.probability > config.marketFilters.maxProbability) return false
+        return true
+      })
+      .sort((a, b) => b.volume - a.volume)
 
     return ok(markets)
   } catch (e) {

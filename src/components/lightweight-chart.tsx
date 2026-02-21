@@ -136,8 +136,7 @@ export function LightweightChart({
     const container = containerRef.current
 
     const chart = createChart(container, {
-      width: container.clientWidth,
-      height: height ?? container.clientHeight,
+      autoSize: true,
       layout: {
         background: { type: ColorType.Solid, color: BG_COLOR },
         textColor: "#555566",
@@ -168,7 +167,8 @@ export function LightweightChart({
       },
       rightPriceScale: {
         borderColor: "#2A2A3A",
-        scaleMargins: { top: 0.08, bottom: 0.22 },
+        autoScale: true,
+        scaleMargins: { top: 0.05, bottom: 0.15 },
       },
       timeScale: {
         borderColor: "#2A2A3A",
@@ -301,20 +301,12 @@ export function LightweightChart({
       })
     })
 
-    // Responsive resize
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height: h } = entry.contentRect
-        if (width > 0) {
-          chart.applyOptions({
-            width,
-            height: height ?? h,
-          })
-          chart.timeScale().scrollToRealTime()
-        }
-      }
+    // Keep most recent data on right edge when container resizes
+    const parentEl = container.parentElement
+    const observer = new ResizeObserver(() => {
+      chart.timeScale().scrollToRealTime()
     })
-    observer.observe(container)
+    if (parentEl) observer.observe(parentEl)
 
     return () => {
       observer.disconnect()
@@ -448,8 +440,8 @@ export function LightweightChart({
   }, [fairValue, showFairValue, chartType])
 
   return (
-    <div className="relative h-full w-full" style={{ minHeight: height ?? 200 }}>
-      <div ref={containerRef} className="h-full w-full" />
+    <div className="relative h-full w-full overflow-hidden" style={{ minHeight: 0 }}>
+      <div ref={containerRef} className="absolute inset-0" />
       {tooltip && (
         <div
           className="pointer-events-none absolute z-10 border border-darwin-border bg-darwin-card px-2.5 py-1.5 text-[11px] font-data shadow-lg"

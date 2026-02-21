@@ -8,14 +8,14 @@
 ## Stack
 
 - **Framework:** Next.js 14+ (App Router — unified frontend + API)
-- **LLM:** Vercel AI SDK via `src/lib/model.ts` — model-agnostic, provider set by `AI_MODEL` env var
-- **Agent loops:** Vercel AI SDK tool-use (`generateText` with tools, max 10 iterations)
+- **LLM:** Vercel AI SDK + Vertex AI Anthropic provider (`@ai-sdk/google-vertex/anthropic`) — model: `claude-opus-4-5@20251101` via `src/lib/model.ts`
+- **Agent orchestration:** LangGraph (`@langchain/langgraph`) StateGraph for structured, stateful agent workflows
 - **Data:** Polymarket (Gamma API for discovery, CLOB for prices)
 - **Research:** Valyu API (news context for agents)
-- **Storage:** In-memory (`Map<string, Signal>`)
+- **Storage:** SQLite via Drizzle ORM (`better-sqlite3`) — persistent signals across restarts
 - **Frontend:** React Query (polling), Tailwind CSS (dark theme)
 
-**Explicitly NOT used:** Kalshi, SQLite, Express, LangGraph, any external orchestration library.
+**Explicitly NOT used:** Kalshi, Express, any separate backend server.
 
 ---
 
@@ -33,20 +33,17 @@ See `docs/ARCHITECTURE.md` for full system diagram and data flow.
 
 The single most important abstraction. An agent = LLM + mandate (system prompt) + tools.
 
-The agent factory takes an `AgentConfig`, builds a system prompt, calls Vercel AI SDK
-`generateText` with tool definitions, handles the tool-call loop (max 10 iterations),
-and returns an `AgentOutput` containing trade proposals.
+The Event Pod is implemented as a LangGraph StateGraph with four nodes:
 
-```typescript
-interface AgentConfig {
-  name: string        // "event-analyst"
-  mandate: string     // system prompt defining agent behavior
-  tools: ToolDefinition<unknown, unknown>[]
-}
+```
+START → fetchNews → estimateProbability → calculateDivergence → generateSignal → END
 ```
 
-The Event Pod agent detects news-to-price lag: markets where recent news should have
-shifted probability but the market price hasn't adjusted yet.
+Conditional edges skip to END when there's no news or divergence is below threshold.
+
+The agent detects news-to-price lag: markets where recent news should have
+shifted probability but the market price hasn't adjusted yet. Signals are persisted
+to SQLite so they survive server restarts.
 
 See `docs/agents.md` for full mandate, tool definitions, and implementation patterns.
 
@@ -127,8 +124,9 @@ inside the wrapper function and return `err(message)`.
 ### LLM Calls — Single Entry Point
 
 ALL LLM calls go through `src/lib/model.ts`. No direct Anthropic/OpenAI SDK imports
-anywhere else. The model is determined by `AI_MODEL` env var. Swap providers by
-changing one env var — zero code changes.
+anywhere else. The model uses Vertex AI (`@ai-sdk/google-vertex/anthropic`) — note the
+`/anthropic` sub-module, which is required for Claude models (the main module is for Gemini).
+Configured via `GOOGLE_CLOUD_PROJECT` and `VERTEX_REGION` env vars. Model: `claude-opus-4-5@20251101`.
 
 ### TypeScript Rules
 
@@ -146,12 +144,13 @@ See `.env.example` for the complete list:
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `AI_MODEL` | Vercel AI SDK model string | `anthropic/claude-opus-4-6` |
-| `ANTHROPIC_API_KEY` | Anthropic API access | — |
+| `GOOGLE_CLOUD_PROJECT` | Vertex AI project ID | `gen-lang-client-0494134627` |
+| `VERTEX_REGION` | Vertex AI region | `us-east5` |
 | `VALYU_API_KEY` | Valyu research API | — |
 | `NEXT_PUBLIC_POLL_INTERVAL_MS` | React Query polling interval | `30000` |
 | `CYCLE_INTERVAL_MS` | Background scan interval | `300000` |
 | `EV_THRESHOLD` | Minimum |EV| to generate a signal | `0.05` |
+| `USE_MOCK_DATA` | Use mock data instead of live APIs | `false` |
 
 ---
 
@@ -177,7 +176,9 @@ poly-arb/
 ├── package.json
 ├── tsconfig.json
 ├── next.config.js
-├── tailwind.config.js
+├── tailwind.config.ts
+├── drizzle.config.ts                     # Drizzle ORM config
+├── darwin.db                             # SQLite database (gitignored)
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── agents.md
@@ -186,7 +187,7 @@ poly-arb/
 │   ├── dev_log.md
 │   └── uiux.md
 ├── src/
-│   ├── app/                              # Next.js App Router
+│   ├── app/
 │   │   ├── layout.tsx                    # Root layout, dark theme, fonts
 │   │   ├── page.tsx                      # Market grid page
 │   │   ├── markets/
@@ -200,33 +201,42 @@ poly-arb/
 │   │       ├── signals/route.ts          # GET /api/signals
 │   │       └── analyze/route.ts          # POST /api/analyze
 │   ├── lib/
-│   │   ├── types.ts                      # Result<T>, Market, Signal, Direction, TradeProposal
+│   │   ├── types.ts                      # Result<T>, Market, Signal, Direction, etc.
 │   │   ├── result.ts                     # ok(), err(), isOk()
-│   │   ├── model.ts                      # Vercel AI SDK callLLM
+│   │   ├── model.ts                      # Vercel AI SDK + Vertex AI provider
 │   │   └── config.ts                     # env loading with defaults
+│   ├── db/
+│   │   ├── schema.ts                     # Drizzle schema: signals, markets tables
+│   │   ├── index.ts                      # Drizzle client (better-sqlite3)
+│   │   └── seed.ts                       # Seed demo data for presentation
 │   ├── data/
 │   │   ├── polymarket.ts                 # Gamma + CLOB API wrapper
-│   │   └── valyu.ts                      # Valyu research API wrapper
+│   │   ├── valyu.ts                      # Valyu research API wrapper
+│   │   └── mock.ts                       # Mock data providers
 │   ├── agent/
-│   │   ├── types.ts                      # AgentConfig, AgentContext, AgentOutput
-│   │   ├── create-agent.ts               # factory: AgentConfig → callable agent
-│   │   └── execute.ts                    # tool-use loop (generateText)
-│   ├── tools/
-│   │   ├── shared.ts                     # fetchMarkets, calculateEV
-│   │   └── event-pod.ts                  # fetchRecentNews, estimateEventProbability, etc.
+│   │   ├── state.ts                      # LangGraph state type definition
+│   │   ├── graph.ts                      # LangGraph StateGraph: Event Pod agent
+│   │   ├── nodes.ts                      # Node functions (fetchNews, estimate, etc.)
+│   │   └── tools.ts                      # Tool functions used by nodes
 │   ├── store/
-│   │   └── memory.ts                     # In-memory Map<string, Signal>
+│   │   └── signals.ts                    # Signal CRUD — SQLite via Drizzle
 │   ├── intelligence/
-│   │   └── calculations.ts              # EV calculation
+│   │   └── calculations.ts              # EV calculation, confidence mapping
 │   ├── components/
-│   │   ├── market-card.tsx               # Market card for grid
-│   │   ├── alpha-bar.tsx                 # Divergence visualization
-│   │   ├── analysis-feed.tsx             # Signal + tool call timeline
-│   │   ├── query-interface.tsx           # On-demand analysis input
-│   │   └── signal-badge.tsx              # Confidence badge
-│   └── hooks/
-│       ├── use-markets.ts                # React Query: markets polling
-│       ├── use-signals.ts                # React Query: signals polling
-│       └── use-analysis.ts               # React Query: analyze mutation
+│   │   ├── market-card.tsx
+│   │   ├── alpha-bar.tsx
+│   │   ├── analysis-feed.tsx
+│   │   ├── query-interface.tsx
+│   │   ├── signal-badge.tsx
+│   │   └── query-provider.tsx
+│   ├── hooks/
+│   │   ├── use-markets.ts
+│   │   ├── use-signals.ts
+│   │   └── use-analysis.ts
+│   └── test/
+│       └── validate.ts                   # End-to-end validation script
+├── scripts/
+│   ├── validate.sh                       # Runner script for validation
+│   └── test-agent.ts                     # Agent pipeline test (mock data + real LLM)
 └── public/
 ```

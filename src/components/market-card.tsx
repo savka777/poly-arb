@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { Star } from "lucide-react"
 import type { Market, Signal } from "@/lib/types"
 import { AlphaBar } from "./alpha-bar"
 import { SignalBadge } from "./signal-badge"
@@ -11,9 +12,10 @@ interface MarketCardProps {
   market: Market
   signal?: Signal
   loading?: boolean
+  watchlisted?: boolean
 }
 
-export function MarketCard({ market, signal, loading }: MarketCardProps) {
+export function MarketCard({ market, signal, loading, watchlisted }: MarketCardProps) {
   if (loading) {
     return (
       <div className="rounded-sm border border-darwin-border bg-darwin-card p-4 space-y-3 animate-pulse">
@@ -45,9 +47,14 @@ export function MarketCard({ market, signal, loading }: MarketCardProps) {
         )}
       >
         <div>
-          <h3 className="text-sm font-medium text-darwin-text line-clamp-2 leading-snug">
-            {market.question}
-          </h3>
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-sm font-medium text-darwin-text line-clamp-2 leading-snug">
+              {market.question}
+            </h3>
+            {watchlisted && (
+              <Star className="h-3.5 w-3.5 shrink-0 fill-yellow-500 text-yellow-500 mt-0.5" />
+            )}
+          </div>
           <span className="label-caps mt-1 inline-block">POLYMARKET</span>
         </div>
 
