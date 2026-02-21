@@ -146,7 +146,9 @@ export function LightweightChart({
     const container = containerRef.current
 
     const chart = createChart(container, {
-      autoSize: true,
+      autoSize: false,
+      width: container.clientWidth,
+      height: container.clientHeight,
       layout: {
         background: { type: ColorType.Solid, color: BG_COLOR },
         textColor: "#555566",
@@ -322,14 +324,21 @@ export function LightweightChart({
       })
     })
 
-    // Keep most recent data on right edge when container resizes
+    // Manual resize handling (avoids autoSize internal ResizeObserver dispose crash)
     let disposed = false
-    const parentEl = container.parentElement
-    const observer = new ResizeObserver(() => {
+    const observer = new ResizeObserver((entries) => {
       if (disposed) return
-      try { chart.timeScale().scrollToRealTime() } catch { /* chart may be disposed */ }
+      const entry = entries[0]
+      if (!entry) return
+      const { width, height: h } = entry.contentRect
+      if (width > 0 && h > 0) {
+        try {
+          chart.resize(width, h)
+          chart.timeScale().scrollToRealTime()
+        } catch { /* chart may be disposed */ }
+      }
     })
-    if (parentEl) observer.observe(parentEl)
+    observer.observe(container)
 
     return () => {
       disposed = true
