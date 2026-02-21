@@ -400,6 +400,7 @@ export default function MarketGrid() {
           <BubbleScatter markets={allMarkets} signalMap={signalsByMarket} />
         </main>
       )}
+
     </div>
   )
 }
