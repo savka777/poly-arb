@@ -17,7 +17,6 @@ import { AlphaBar } from "@/components/alpha-bar"
 import { SignalBadge } from "@/components/signal-badge"
 import { AnalysisFeed, type FeedEntry } from "@/components/analysis-feed"
 import { QueryInterface } from "@/components/query-interface"
-import { CompareLink } from "@/components/compare-link"
 import {
   formatProbability,
   formatEV,
@@ -26,8 +25,7 @@ import {
   relativeTime,
 } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { useWatchlist, useToggleWatchlist } from "@/hooks/use-watchlist"
-import { ChevronLeft, TrendingDown, TrendingUp, PanelRightOpen, PanelRightClose, Star } from "lucide-react"
+import { ChevronLeft, TrendingDown, TrendingUp, PanelRightOpen, PanelRightClose, Plus } from "lucide-react"
 import type { UTCTimestamp } from "lightweight-charts"
 
 export default function MarketDetailPage({
@@ -39,13 +37,9 @@ export default function MarketDetailPage({
   const { data, isLoading } = useMarket(id)
   const analysis = useAnalysis()
   const [feedEntries, setFeedEntries] = useState<FeedEntry[]>([])
-  const [showAnalysis, setShowAnalysis] = useState(true)
+  const [showAnalysis, setShowAnalysis] = useState(false)
   const panelControls = usePanelSettings(id)
   const { settings } = panelControls
-
-  const { data: watchlistData } = useWatchlist()
-  const toggleWatchlist = useToggleWatchlist()
-  const isWatchlisted = watchlistData?.marketIds.includes(id) ?? false
 
   const market = data?.market
   const signal = data?.signals?.[0]
@@ -169,28 +163,16 @@ export default function MarketDetailPage({
           <span className="label-caps !text-[10px]">
             {market.category ?? "polymarket"}
           </span>
+          <div className="h-4 w-px bg-darwin-border" />
+          <Link
+            href={`/compare?add=${id}`}
+            className="flex items-center gap-1.5 border border-darwin-border px-2.5 py-1 text-xs text-darwin-text-secondary transition-colors hover:border-darwin-text-muted hover:text-darwin-text"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Market
+          </Link>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() =>
-              toggleWatchlist.mutate({
-                marketId: id,
-                watchlisted: isWatchlisted,
-              })
-            }
-            className={cn(
-              "flex items-center gap-1.5 border px-2.5 py-1 text-xs transition-colors",
-              isWatchlisted
-                ? "border-yellow-500/50 text-yellow-500"
-                : "border-darwin-border text-darwin-text-secondary hover:border-darwin-text-muted hover:text-darwin-text"
-            )}
-            title={isWatchlisted ? "Remove from watchlist" : "Add to watchlist"}
-          >
-            <Star
-              className={cn("h-3.5 w-3.5", isWatchlisted && "fill-yellow-500")}
-            />
-            {isWatchlisted ? "Watchlisted" : "Watch"}
-          </button>
           <button
             onClick={() => setShowAnalysis((p) => !p)}
             className={cn(
@@ -204,7 +186,6 @@ export default function MarketDetailPage({
             {showAnalysis ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
             Analysis
           </button>
-          <CompareLink marketId={id} />
         </div>
       </header>
 
@@ -256,7 +237,7 @@ export default function MarketDetailPage({
           />
 
           {/* Chart */}
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-h-0">
             {pricesLoading && chartData.length === 0 ? (
               <div className="flex h-full items-center justify-center">
                 <span className="text-xs text-darwin-text-muted animate-pulse">

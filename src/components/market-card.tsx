@@ -35,7 +35,7 @@ export function MarketCard({ market, signal, loading, watchlisted }: MarketCardP
   const isBullish = signal && signal.ev > 0
 
   return (
-    <Link href={`/markets/${market.id}`}>
+    <Link href={`/compare?add=${market.id}`}>
       <div
         className={cn(
           "rounded-sm border border-darwin-border bg-darwin-card p-4 space-y-3",

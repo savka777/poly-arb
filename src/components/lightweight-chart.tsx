@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useState, useCallback } from "react"
 import {
   createChart,
   AreaSeries,
@@ -46,9 +46,27 @@ interface LightweightChartProps {
 }
 
 const BG_COLOR = "#0A0A0F"
+
+function formatPercent(price: number): string {
+  const pct = price * 100
+  if (pct >= 10) return `${pct.toFixed(1)}%`
+  if (pct >= 1) return `${pct.toFixed(2)}%`
+  return `${pct.toFixed(3)}%`
+}
+
 const PRICE_FORMAT = {
   type: "custom" as const,
-  formatter: (price: number) => `${(price * 100).toFixed(0)}%`,
+  formatter: formatPercent,
+}
+
+const VOLUME_FORMAT = {
+  type: "custom" as const,
+  formatter: (val: number) => {
+    const pct = val * 100
+    if (pct >= 10) return pct.toFixed(1)
+    if (pct >= 1) return pct.toFixed(2)
+    return pct.toFixed(3)
+  },
 }
 
 export function LightweightChart({
@@ -70,6 +88,18 @@ export function LightweightChart({
 }: LightweightChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
+
+  // Crosshair tooltip state
+  interface TooltipData {
+    x: number
+    y: number
+    price: number | null
+    ohlc: { o: number; h: number; l: number; c: number } | null
+    darwin: number | null
+    vol: number | null
+    time: string
+  }
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null)
 
   // Series refs
   const areaSeriesRef = useRef<ISeriesApi<"Area"> | null>(null)
@@ -106,8 +136,7 @@ export function LightweightChart({
     const container = containerRef.current
 
     const chart = createChart(container, {
-      width: container.clientWidth,
-      height: height ?? container.clientHeight,
+      autoSize: true,
       layout: {
         background: { type: ColorType.Solid, color: BG_COLOR },
         textColor: "#555566",
@@ -138,7 +167,8 @@ export function LightweightChart({
       },
       rightPriceScale: {
         borderColor: "#2A2A3A",
-        scaleMargins: { top: 0.08, bottom: 0.22 },
+        autoScale: true,
+        scaleMargins: { top: 0.05, bottom: 0.15 },
       },
       timeScale: {
         borderColor: "#2A2A3A",
@@ -147,6 +177,8 @@ export function LightweightChart({
         fixLeftEdge: true,
         fixRightEdge: true,
         rightOffset: 2,
+        barSpacing: 12,
+        minBarSpacing: 4,
       },
     })
     chartRef.current = chart
@@ -198,14 +230,16 @@ export function LightweightChart({
     })
     candleSeriesRef.current = candle
 
-    // Volume histogram
+    // Volume histogram (shows price range / volatility per candle)
     const vol = chart.addSeries(HistogramSeries, {
-      priceFormat: { type: "volume" },
+      color: "#26a69a",
+      base: 0,
+      priceFormat: VOLUME_FORMAT,
       priceScaleId: "volume",
       visible: false,
     })
     chart.priceScale("volume").applyOptions({
-      scaleMargins: { top: 0.8, bottom: 0 },
+      scaleMargins: { top: 0.7, bottom: 0 },
       borderVisible: false,
     })
     volumeSeriesRef.current = vol
@@ -226,38 +260,53 @@ export function LightweightChart({
     })
     darwinSeriesRef.current = darwin
 
-    // Crosshair move handler
-    if (onCrosshairMove) {
-      chart.subscribeCrosshairMove((param) => {
-        if (!param.time) {
-          onCrosshairMove(null, null)
-          return
-        }
-        const areaData = param.seriesData.get(area)
-        const lineData = param.seriesData.get(line)
-        const candleData = param.seriesData.get(candle)
-        let price: number | null = null
-        if (areaData && "value" in areaData) price = areaData.value
-        else if (lineData && "value" in lineData) price = lineData.value
-        else if (candleData && "close" in candleData) price = candleData.close
-        onCrosshairMove(param.time as UTCTimestamp, price)
-      })
-    }
-
-    // Responsive resize
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height: h } = entry.contentRect
-        if (width > 0) {
-          chart.applyOptions({
-            width,
-            height: height ?? h,
-          })
-          chart.timeScale().scrollToRealTime()
-        }
+    // Crosshair move handler — tooltip + external callback
+    chart.subscribeCrosshairMove((param) => {
+      if (!param.time || !param.point) {
+        setTooltip(null)
+        if (onCrosshairMove) onCrosshairMove(null, null)
+        return
       }
+
+      const areaData = param.seriesData.get(area)
+      const lineData = param.seriesData.get(line)
+      const candleData = param.seriesData.get(candle)
+      const volData = param.seriesData.get(vol)
+      const darwinDataPt = param.seriesData.get(darwin)
+
+      let price: number | null = null
+      if (areaData && "value" in areaData) price = areaData.value
+      else if (lineData && "value" in lineData) price = lineData.value
+      else if (candleData && "close" in candleData) price = candleData.close
+
+      if (onCrosshairMove) onCrosshairMove(param.time as UTCTimestamp, price)
+
+      const t = param.time as number
+      const date = new Date(t * 1000)
+      const timeStr = date.toLocaleString(undefined, {
+        month: "short", day: "numeric", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      })
+
+      setTooltip({
+        x: param.point.x,
+        y: param.point.y,
+        price,
+        ohlc: candleData && "open" in candleData
+          ? { o: candleData.open, h: candleData.high, l: candleData.low, c: candleData.close }
+          : null,
+        darwin: darwinDataPt && "value" in darwinDataPt ? darwinDataPt.value : null,
+        vol: volData && "value" in volData ? volData.value : null,
+        time: timeStr,
+      })
     })
-    observer.observe(container)
+
+    // Keep most recent data on right edge when container resizes
+    const parentEl = container.parentElement
+    const observer = new ResizeObserver(() => {
+      chart.timeScale().scrollToRealTime()
+    })
+    if (parentEl) observer.observe(parentEl)
 
     return () => {
       observer.disconnect()
@@ -329,14 +378,14 @@ export function LightweightChart({
       }
     }
 
-    // Volume
+    // Volume — always set data, toggle visibility
     if (volumeSeriesRef.current) {
-      volumeSeriesRef.current.applyOptions({ visible: sv })
-      if (sv && volumeData && volumeData.length > 0) {
+      if (volumeData && volumeData.length > 0) {
         volumeSeriesRef.current.setData(volumeData)
-      } else if (sv) {
+      } else {
         volumeSeriesRef.current.setData([])
       }
+      volumeSeriesRef.current.applyOptions({ visible: sv && !!volumeData?.length })
     }
 
     // Darwin
@@ -391,10 +440,50 @@ export function LightweightChart({
   }, [fairValue, showFairValue, chartType])
 
   return (
-    <div
-      ref={containerRef}
-      className="h-full w-full"
-      style={{ minHeight: height ?? 200 }}
-    />
+    <div className="relative h-full w-full overflow-hidden" style={{ minHeight: 0 }}>
+      <div ref={containerRef} className="absolute inset-0" />
+      {tooltip && (
+        <div
+          className="pointer-events-none absolute z-10 border border-darwin-border bg-darwin-card px-2.5 py-1.5 text-[11px] font-data shadow-lg"
+          style={{
+            left: Math.min(tooltip.x + 16, (containerRef.current?.clientWidth ?? 400) - 180),
+            top: Math.max(tooltip.y - 60, 4),
+          }}
+        >
+          <div className="text-darwin-text-muted mb-1">{tooltip.time}</div>
+          {tooltip.ohlc ? (
+            <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+              <span className="text-darwin-text-muted">O</span>
+              <span className="text-darwin-text">{formatPercent(tooltip.ohlc.o)}</span>
+              <span className="text-darwin-text-muted">H</span>
+              <span className="text-darwin-text">{formatPercent(tooltip.ohlc.h)}</span>
+              <span className="text-darwin-text-muted">L</span>
+              <span className="text-darwin-text">{formatPercent(tooltip.ohlc.l)}</span>
+              <span className="text-darwin-text-muted">C</span>
+              <span className={tooltip.ohlc.c >= tooltip.ohlc.o ? "text-darwin-green" : "text-darwin-red"}>
+                {formatPercent(tooltip.ohlc.c)}
+              </span>
+            </div>
+          ) : tooltip.price !== null ? (
+            <div>
+              <span className="text-darwin-text-muted">Price </span>
+              <span className="text-darwin-text">{formatPercent(tooltip.price)}</span>
+            </div>
+          ) : null}
+          {tooltip.darwin !== null && (
+            <div className="mt-0.5">
+              <span className="text-darwin-text-muted">Darwin </span>
+              <span className="text-darwin-green">{formatPercent(tooltip.darwin)}</span>
+            </div>
+          )}
+          {tooltip.vol !== null && (
+            <div className="mt-0.5">
+              <span className="text-darwin-text-muted">Range </span>
+              <span className="text-darwin-text">{formatPercent(tooltip.vol)}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
