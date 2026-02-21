@@ -1,0 +1,156 @@
+{
+  "_meta": {
+    "api": "Polymarket CLOB",
+    "base_url": "https://clob.polymarket.com",
+    "generated": "2026-02-21T16:03:31.381366Z",
+    "market_used": {
+      "gamma_id": "517310",
+      "question": "Will Trump deport less than 250,000?",
+      "condition_id": "0xaf9d0e448129a9f657f851d49495ba4742055d80e0ef1166ba0ee81d4d594214",
+      "yes_token_id": "101676997363687199724245607342877036148401850938023978421879460310389391082353",
+      "no_token_id": "4153292802911610701832309484716814274802943278345248636922528170020319407796"
+    }
+  },
+  "endpoints": {
+    "GET /markets?limit=3": {
+      "_description": "Returns { data: [...], next_cursor, limit, count }",
+      "top_level_keys": [
+        "data",
+        "next_cursor",
+        "limit",
+        "count"
+      ],
+      "next_cursor": "MTAwMA==",
+      "count": 1000,
+      "sample_item_keys": [
+        "enable_order_book",
+        "active",
+        "closed",
+        "archived",
+        "accepting_orders",
+        "accepting_order_timestamp",
+        "minimum_order_size",
+        "minimum_tick_size",
+        "condition_id",
+        "question_id",
+        "question",
+        "description",
+        "market_slug",
+        "end_date_iso",
+        "game_start_time",
+        "seconds_delay",
+        "fpmm",
+        "maker_base_fee",
+        "taker_base_fee",
+        "notifications_enabled",
+        "neg_risk",
+        "neg_risk_market_id",
+        "neg_risk_request_id",
+        "icon",
+        "image",
+        "rewards",
+        "is_50_50_outcome",
+        "tokens",
+        "tags"
+      ]
+    },
+    "GET /markets/:condition_id": {
+      "_description": "Returns a single CLOB market object directly (not wrapped).",
+      "keys_present": [
+        "accepting_order_timestamp",
+        "accepting_orders",
+        "active",
+        "archived",
+        "closed",
+        "condition_id",
+        "description",
+        "enable_order_book",
+        "end_date_iso",
+        "fpmm",
+        "game_start_time",
+        "icon",
+        "image",
+        "is_50_50_outcome",
+        "maker_base_fee",
+        "market_slug",
+        "minimum_order_size",
+        "minimum_tick_size",
+        "neg_risk",
+        "neg_risk_market_id",
+        "neg_risk_request_id",
+        "notifications_enabled",
+        "question",
+        "question_id",
+        "rewards",
+        "seconds_delay",
+        "tags",
+        "taker_base_fee",
+        "tokens"
+      ],
+      "accepting_orders": true,
+      "minimum_order_size": 5,
+      "minimum_tick_size": 0.001,
+      "neg_risk": true,
+      "tokens": [
+        {
+          "token_id": "101676997363687199724245607342877036148401850938023978421879460310389391082353",
+          "outcome": "Yes",
+          "price": 0.0295,
+          "winner": false
+        },
+        {
+          "token_id": "4153292802911610701832309484716814274802943278345248636922528170020319407796",
+          "outcome": "No",
+          "price": 0.9705,
+          "winner": false
+        }
+      ]
+    },
+    "GET /price?token_id=:yes_token&side=BUY": {
+      "_description": "Returns { price: string }. Price is a decimal string, not a number.",
+      "raw_response": {
+        "price": "0.029"
+      }
+    },
+    "GET /book?token_id=:yes_token": {
+      "_description": "Returns full order book. bids/asks are arrays of {price: string, size: string}.",
+      "top_level_keys": [
+        "market",
+        "asset_id",
+        "timestamp",
+        "hash",
+        "bids",
+        "asks",
+        "min_order_size",
+        "tick_size",
+        "neg_risk",
+        "last_trade_price"
+      ],
+      "sample": {
+        "market": "0xaf9d0e448129a9f657f851d49495ba4742055d80e0ef1166ba0ee81d4d594214",
+        "asset_id": "101676997363687199724245607342877036148401850938023978421879460310389391082353",
+        "timestamp": "1771689753343",
+        "hash": "5b38451cb5e85742db9241698542ecd19e1a4f39",
+        "bids": [
+          { "price": "0.001", "size": "15256.85" },
+          { "price": "0.002", "size": "1418.03" },
+          { "price": "0.003", "size": "1012.12" },
+          { "price": "0.004", "size": "17.95" },
+          { "price": "0.006", "size": "458.4" }
+        ],
+        "asks": [
+          { "price": "0.999", "size": "654.35" },
+          { "price": "0.998", "size": "250" },
+          { "price": "0.997", "size": "407" },
+          { "price": "0.994", "size": "200" },
+          { "price": "0.993", "size": "10.3" }
+        ],
+        "min_order_size": "5",
+        "tick_size": "0.001",
+        "neg_risk": true,
+        "last_trade_price": "0.029",
+        "_note": "trimmed to 5 bids/asks for reference; full book has more levels"
+      }
+    }
+  }
+}
