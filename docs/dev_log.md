@@ -29,6 +29,42 @@
 
 ---
 
+## [2026-02-21 16:00] API Implementation — Sprint 1 (Data Wrappers)
+
+### What Changed
+- **Created:** `src/lib/result.ts` — `ok()`, `err()`, `isOk()` with full `Result<T>` type
+- **Created:** `src/lib/types.ts` — all domain types: `Market`, `Signal`, `TradeProposal`, `Direction`, `GammaMarket`, `ClobMarket`, `ClobOrderBook`, `ToolCallRecord` + API response shapes
+- **Created:** `src/lib/config.ts` — env loading with typed defaults, `requireEnv` guard on `VALYU_API_KEY`
+- **Created:** `src/data/polymarket.ts` — Gamma + CLOB wrappers: `fetchMarkets`, `fetchMarketById`, `fetchClobMarket`, `fetchTokenPrice`, `fetchOrderBook`, `fetchClobMarkets`, `gammaToMarket` normalizer
+- **Created:** `src/data/valyu.ts` — Valyu wrapper: `searchNews`, `searchWebNews`, `buildNewsQuery`
+- **Created:** `scripts/test-apis.ts` — smoke test (Gamma ✓, CLOB ✓, Valyu key exhausted)
+
+### Decisions Made
+- **`market.id` = Gamma numeric ID** (`"517310"`). `conditionId` (0x hex) stored separately for CLOB calls.
+- **`tokenIds: [string, string]`** added to Market type — needed for CLOB price/book queries. Not in original spec but required.
+- **Gamma returns plain array** (no `{ data: [] }` wrapper). CLOB returns `{ data: [], next_cursor }`. Handled differently.
+- **`outcomePrices` is JSON string of string numbers** e.g. `"[\"0.022\", \"0.978\"]"` — must `parseFloat` after `JSON.parse`.
+- **Valyu endpoint confirmed as `/v1/deepsearch`** (not `/v1/search` as documented). Verified working before key exhaustion.
+- **Backoff: 4 attempts at 0/1/2/4s** on 429 or 5xx. Non-429 4xx → return error immediately.
+
+### Now Unblocked
+- Next.js project init (`package.json`, `tsconfig.json`, `next.config.js`)
+- `src/lib/model.ts` — Vercel AI SDK `callLLM` entry point
+- `src/agent/` — factory + tool-use loop
+- `src/tools/shared.ts` + `src/tools/event-pod.ts`
+- `src/store/memory.ts`
+
+### Known Issues
+- **Valyu key exhausted** — key `asGhqGwape5JafAyk3qDAVSQAHtso312DescfFUa` returns 403 after testing. Need fresh key before agent runs.
+- **No `package.json`** — `npx tsx` works ad-hoc but type checking requires Next.js init.
+
+### Next Up
+- Initialize Next.js 14 app
+- `src/lib/model.ts` + `src/agent/` + `src/tools/` + `src/store/memory.ts`
+- Sprint 1 gate: agent produces valid `Signal` from a real market
+
+---
+
 ## [2026-02-21 00:00] Documentation Rewrite
 
 ### What Changed

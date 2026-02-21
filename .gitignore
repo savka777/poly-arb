@@ -1,0 +1,23 @@
+# Environment — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Next.js
+.next/
+out/
+build/
+
+# Node
+node_modules/
+
+# Python cache (leftover from prototyping)
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
