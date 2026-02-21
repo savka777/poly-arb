@@ -1,0 +1,169 @@
+import type { Market, Signal, ToolCallRecord } from "./types"
+
+const now = new Date().toISOString()
+
+export const MOCK_MARKETS: Market[] = [
+  {
+    id: "market-1",
+    platform: "polymarket",
+    question: "Will the Fed cut interest rates at the March 2026 FOMC meeting?",
+    probability: 0.42,
+    volume: 8_400_000,
+    liquidity: 2_100_000,
+    endDate: "2026-03-19T18:00:00Z",
+    url: "https://polymarket.com/event/fed-rate-march-2026",
+    category: "economics",
+    lastUpdated: now,
+  },
+  {
+    id: "market-2",
+    platform: "polymarket",
+    question: "Will France hold snap parliamentary elections before July 2026?",
+    probability: 0.31,
+    volume: 3_200_000,
+    liquidity: 890_000,
+    endDate: "2026-07-01T00:00:00Z",
+    url: "https://polymarket.com/event/france-snap-elections",
+    category: "politics",
+    lastUpdated: now,
+  },
+  {
+    id: "market-3",
+    platform: "polymarket",
+    question: "Will Bitcoin exceed $150,000 before April 2026?",
+    probability: 0.18,
+    volume: 12_600_000,
+    liquidity: 4_500_000,
+    endDate: "2026-04-01T00:00:00Z",
+    url: "https://polymarket.com/event/btc-150k-apr-2026",
+    category: "crypto",
+    lastUpdated: now,
+  },
+  {
+    id: "market-4",
+    platform: "polymarket",
+    question: "Will the US and EU reach a new trade agreement by June 2026?",
+    probability: 0.55,
+    volume: 1_800_000,
+    liquidity: 620_000,
+    endDate: "2026-06-30T00:00:00Z",
+    url: "https://polymarket.com/event/us-eu-trade-deal",
+    category: "politics",
+    lastUpdated: now,
+  },
+]
+
+export const MOCK_SIGNALS: Signal[] = [
+  {
+    id: "signal-1",
+    marketId: "market-1",
+    marketQuestion: "Will the Fed cut interest rates at the March 2026 FOMC meeting?",
+    darwinEstimate: 0.62,
+    marketPrice: 0.42,
+    ev: 0.20,
+    direction: "yes",
+    reasoning:
+      "Recent CPI data showing inflation dropping to 2.1% combined with three consecutive months of rising unemployment claims strongly suggest the Fed will pivot dovish. The market appears anchored to outdated hawkish guidance from January.",
+    newsEvents: [
+      "CPI falls to 2.1% in February 2026 — lowest since 2021",
+      "Unemployment claims rise for third consecutive week",
+      "Fed Governor Waller signals openness to rate cuts",
+    ],
+    confidence: "high",
+    createdAt: new Date(Date.now() - 2 * 60_000).toISOString(),
+    expiresAt: "2026-03-19T18:00:00Z",
+  },
+  {
+    id: "signal-2",
+    marketId: "market-2",
+    marketQuestion: "Will France hold snap parliamentary elections before July 2026?",
+    darwinEstimate: 0.48,
+    marketPrice: 0.31,
+    ev: 0.17,
+    direction: "yes",
+    reasoning:
+      "Constitutional crisis deepening as PM faces third no-confidence motion. Le Pen's party signaling willingness to trigger dissolution. Market underpricing political instability risk.",
+    newsEvents: [
+      "French PM faces third no-confidence motion in 6 months",
+      "Le Pen allies call for dissolution of parliament",
+    ],
+    confidence: "medium",
+    createdAt: new Date(Date.now() - 8 * 60_000).toISOString(),
+    expiresAt: "2026-07-01T00:00:00Z",
+  },
+  {
+    id: "signal-3",
+    marketId: "market-3",
+    marketQuestion: "Will Bitcoin exceed $150,000 before April 2026?",
+    darwinEstimate: 0.08,
+    marketPrice: 0.18,
+    ev: -0.10,
+    direction: "no",
+    reasoning:
+      "Market overpricing BTC momentum. On-chain data shows whale distribution, exchange inflows rising. Macro headwinds from potential tariff escalation create risk-off environment. 40 days is insufficient for a 60%+ rally from current levels.",
+    newsEvents: [
+      "On-chain analytics show largest whale sell-off since November 2025",
+      "Exchange BTC inflows spike to 6-month high",
+    ],
+    confidence: "high",
+    createdAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+    expiresAt: "2026-04-01T00:00:00Z",
+  },
+]
+
+export const MOCK_TOOL_CALLS: ToolCallRecord[] = [
+  {
+    id: "tc-1",
+    toolName: "fetchRecentNews",
+    input: { query: "Fed interest rate March 2026 FOMC", maxResults: 5 },
+    output: {
+      results: [
+        {
+          title: "CPI falls to 2.1% in February 2026",
+          source: "Reuters",
+          relevanceScore: 0.95,
+        },
+        {
+          title: "Unemployment claims rise for third consecutive week",
+          source: "BLS",
+          relevanceScore: 0.88,
+        },
+        {
+          title: "Fed Governor Waller signals openness to rate cuts",
+          source: "CNBC",
+          relevanceScore: 0.92,
+        },
+      ],
+    },
+    durationMs: 1240,
+    timestamp: new Date(Date.now() - 3 * 60_000).toISOString(),
+  },
+  {
+    id: "tc-2",
+    toolName: "estimateEventProbability",
+    input: {
+      question: "Will the Fed cut interest rates at the March 2026 FOMC meeting?",
+      newsContext: "CPI 2.1%, rising unemployment, Waller dovish signals",
+    },
+    output: {
+      probability: 0.62,
+      reasoning: "Strong disinflationary trend plus labor market weakening",
+      confidence: "high",
+      keyFactors: [
+        "CPI at 2.1%",
+        "Rising unemployment claims",
+        "Dovish Fed signals",
+      ],
+    },
+    durationMs: 2800,
+    timestamp: new Date(Date.now() - 2.5 * 60_000).toISOString(),
+  },
+  {
+    id: "tc-3",
+    toolName: "calculatePriceDivergence",
+    input: { estimatedProbability: 0.62, marketPrice: 0.42 },
+    output: { divergence: 0.20, direction: "yes", significant: true },
+    durationMs: 5,
+    timestamp: new Date(Date.now() - 2.2 * 60_000).toISOString(),
+  },
+]
