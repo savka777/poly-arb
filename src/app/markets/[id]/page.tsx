@@ -3,10 +3,16 @@
 import { use, useMemo, useState } from "react"
 import Link from "next/link"
 import { useMarket } from "@/hooks/use-market"
-import { usePrices } from "@/hooks/use-prices"
+import { usePrices, useOhlc } from "@/hooks/use-prices"
 import { useAnalysis } from "@/hooks/use-analysis"
+import { usePanelSettings } from "@/hooks/use-panel-settings"
+import { useFairValue } from "@/hooks/use-fair-value"
 import { LightweightChart } from "@/components/lightweight-chart"
-import type { ChartDataPoint } from "@/components/lightweight-chart"
+import { ChartToolbar } from "@/components/chart-toolbar"
+import { OhlcHeader } from "@/components/ohlc-header"
+import { FairValueEditor } from "@/components/fair-value-editor"
+import type { ChartDataPoint } from "@/lib/chart-types"
+import { ohlcToChartData, ohlcToVolumeData } from "@/lib/ohlc"
 import { AlphaBar } from "@/components/alpha-bar"
 import { SignalBadge } from "@/components/signal-badge"
 import { AnalysisFeed, type FeedEntry } from "@/components/analysis-feed"
@@ -20,10 +26,8 @@ import {
   relativeTime,
 } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, TrendingDown, TrendingUp } from "lucide-react"
+import { ChevronLeft, TrendingDown, TrendingUp, PanelRightOpen, PanelRightClose } from "lucide-react"
 import type { UTCTimestamp } from "lightweight-charts"
-
-type TimeRange = "1d" | "1w" | "1m" | "all"
 
 export default function MarketDetailPage({
   params,
@@ -34,14 +38,22 @@ export default function MarketDetailPage({
   const { data, isLoading } = useMarket(id)
   const analysis = useAnalysis()
   const [feedEntries, setFeedEntries] = useState<FeedEntry[]>([])
-  const [timeRange, setTimeRange] = useState<TimeRange>("all")
+  const [showAnalysis, setShowAnalysis] = useState(true)
+  const panelControls = usePanelSettings(id)
+  const { settings } = panelControls
 
   const market = data?.market
   const signal = data?.signals?.[0]
+  const fv = useFairValue(id, signal?.darwinEstimate)
 
   const { data: priceData, isLoading: pricesLoading } = usePrices(
     market?.clobTokenId,
-    timeRange
+    settings.timeFrame
+  )
+
+  const { data: ohlcResponse } = useOhlc(
+    market?.clobTokenId,
+    settings.timeFrame
   )
 
   const chartData = useMemo<ChartDataPoint[]>(() => {
@@ -52,15 +64,33 @@ export default function MarketDetailPage({
     }))
   }, [priceData])
 
+  const candleData = useMemo(() => {
+    if (!ohlcResponse?.ohlc) return undefined
+    return ohlcToChartData(ohlcResponse.ohlc)
+  }, [ohlcResponse])
+
+  const volumeData = useMemo(() => {
+    if (!ohlcResponse?.ohlc) return undefined
+    return ohlcToVolumeData(ohlcResponse.ohlc)
+  }, [ohlcResponse])
+
   const darwinData = useMemo<ChartDataPoint[] | undefined>(() => {
     if (!signal || chartData.length === 0) return undefined
-    // Show Darwin estimate as a line on the last ~20% of the chart
     const startIdx = Math.max(0, Math.floor(chartData.length * 0.8))
     return chartData.slice(startIdx).map((p) => ({
       time: p.time,
       value: signal.darwinEstimate,
     }))
   }, [signal, chartData])
+
+  // OHLC header from latest candle
+  const lastOhlc = ohlcResponse?.ohlc?.[ohlcResponse.ohlc.length - 1] ?? null
+  const firstOhlc = ohlcResponse?.ohlc?.[0] ?? null
+  const change = lastOhlc && firstOhlc ? lastOhlc.close - firstOhlc.open : undefined
+  const changePercent =
+    change !== undefined && firstOhlc && firstOhlc.open !== 0
+      ? (change / firstOhlc.open) * 100
+      : undefined
 
   const initialFeedEntries = useMemo<FeedEntry[]>(() => {
     const entries: FeedEntry[] = []
@@ -109,7 +139,7 @@ export default function MarketDetailPage({
     return (
       <div className="flex h-screen flex-col bg-darwin-bg">
         <header className="flex h-12 shrink-0 items-center border-b border-darwin-border px-6">
-          <div className="h-4 w-48 animate-pulse rounded-sm bg-darwin-border" />
+          <div className="h-4 w-48 animate-pulse bg-darwin-border" />
         </header>
         <div className="flex-1 animate-pulse bg-darwin-card" />
       </div>
@@ -117,13 +147,6 @@ export default function MarketDetailPage({
   }
 
   const isBullish = signal && signal.ev > 0
-  const lineColor = signal
-    ? signal.direction === "no"
-      ? "#FF4444"
-      : "#00D47E"
-    : "#4488FF"
-
-  const timeRanges: TimeRange[] = ["1d", "1w", "1m", "all"]
 
   return (
     <div className="flex h-screen flex-col bg-darwin-bg">
@@ -142,13 +165,28 @@ export default function MarketDetailPage({
             {market.category ?? "polymarket"}
           </span>
         </div>
-        <CompareLink />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAnalysis((p) => !p)}
+            className={cn(
+              "flex items-center gap-1.5 border px-2.5 py-1 text-xs transition-colors",
+              showAnalysis
+                ? "border-darwin-blue/50 text-darwin-blue"
+                : "border-darwin-border text-darwin-text-secondary hover:border-darwin-text-muted hover:text-darwin-text"
+            )}
+            title={showAnalysis ? "Hide analysis panel" : "Show analysis panel"}
+          >
+            {showAnalysis ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
+            Analysis
+          </button>
+          <CompareLink marketId={id} />
+        </div>
       </header>
 
       {/* Main content: chart left, activity right */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left — Chart area */}
-        <div className="flex flex-1 flex-col border-r border-darwin-border">
+        <div className={cn("flex flex-1 flex-col", showAnalysis && "border-r border-darwin-border")}>
           {/* Market info header */}
           <div className="border-b border-darwin-border px-4 py-3">
             <h1 className="text-base font-semibold text-darwin-text leading-tight">
@@ -179,6 +217,19 @@ export default function MarketDetailPage({
             </div>
           </div>
 
+          {/* OHLC header */}
+          <OhlcHeader
+            currentOhlc={lastOhlc}
+            change={change}
+            changePercent={changePercent}
+          />
+
+          {/* Chart toolbar */}
+          <ChartToolbar
+            settings={settings}
+            controls={panelControls}
+          />
+
           {/* Chart */}
           <div className="relative flex-1">
             {pricesLoading && chartData.length === 0 ? (
@@ -196,14 +247,21 @@ export default function MarketDetailPage({
             ) : (
               <LightweightChart
                 data={chartData}
+                ohlcData={candleData}
+                volumeData={volumeData}
                 darwinData={darwinData}
-                lineColor={lineColor}
+                chartType={settings.chartType}
+                showVolume={settings.showVolume}
+                lineColor="#FFFFFF"
                 darwinColor={signal?.direction === "no" ? "#FF4444" : "#00D47E"}
+                showDarwinEstimate={settings.overlays.darwinEstimate}
+                fairValue={fv.fairValue ?? undefined}
+                showFairValue={settings.overlays.fairValue}
               />
             )}
           </div>
 
-          {/* Chart footer — stats + time range selector */}
+          {/* Chart footer — stats */}
           <div className="flex items-center justify-between border-t border-darwin-border px-4 py-2">
             <div className="flex items-center gap-6 text-xs">
               <span className="text-darwin-text-secondary">
@@ -225,27 +283,11 @@ export default function MarketDetailPage({
                 </>
               )}
             </div>
-            <div className="flex items-center gap-1">
-              {timeRanges.map((range) => (
-                <button
-                  key={range}
-                  onClick={() => setTimeRange(range)}
-                  className={cn(
-                    "px-2 py-0.5 text-[11px] font-medium uppercase transition-colors",
-                    timeRange === range
-                      ? "bg-darwin-elevated text-darwin-text"
-                      : "text-darwin-text-muted hover:text-darwin-text-secondary"
-                  )}
-                >
-                  {range === "all" ? "ALL" : range.toUpperCase()}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
         {/* Right — Activity monitor / Chat */}
-        <div className="flex w-[380px] shrink-0 flex-col">
+        {showAnalysis && <div className="flex w-[380px] shrink-0 flex-col">
           {/* Activity header */}
           <div className="border-b border-darwin-border px-4 py-3">
             <h2 className="text-sm font-medium text-darwin-text">
@@ -296,6 +338,14 @@ export default function MarketDetailPage({
                   </span>
                 </div>
               </div>
+              <div className="border-t border-darwin-border pt-2">
+                <FairValueEditor
+                  fairValue={fv.fairValue}
+                  isCustom={fv.isCustom}
+                  onSave={fv.setFairValue}
+                  onReset={fv.clearFairValue}
+                />
+              </div>
             </div>
           )}
 
@@ -321,7 +371,7 @@ export default function MarketDetailPage({
               loading={analysis.isPending}
             />
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   )

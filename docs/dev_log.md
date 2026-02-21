@@ -29,6 +29,91 @@
 
 ---
 
+## [2026-02-21 15:30] Compare Flow Rework + Toggleable Analysis Panel
+
+### What Changed
+
+**Modified files:**
+- `src/app/compare/page.tsx` — Reworked flow: starts empty instead of auto-loading 4 markets. Users add markets one at a time via "Add Market" button. Supports `?add=marketId` URL param for adding from detail page. Removed fixed layout selector — grid auto-sizes based on number of panels (1→2→4→6→8). Added remove button per panel.
+- `src/components/resizable-grid.tsx` — Now derives layout automatically from `children.length` instead of requiring explicit `panelCount` prop. Simpler API.
+- `src/components/compare-panel.tsx` — Added `onRemove` prop and X button in panel header to remove individual panels.
+- `src/components/compare-link.tsx` — Accepts optional `marketId` prop. Shows "Add to Compare" on detail page (navigates to `/compare?add=id`), plain "Compare" on grid page.
+- `src/app/markets/[id]/page.tsx` — Darwin Analysis right panel is now toggleable via "Analysis" button in header. Panel collapses to give chart full width. CompareLink now passes market ID.
+
+### Decisions Made
+- **Incremental add flow** — Users build their compare view market by market instead of getting 4 random ones. More intentional, matches how TradingView watchlists work.
+- **Auto-layout** — Grid auto-determines cols/rows from panel count: 1→1x1, 2→2x1, 3-4→2x2, 5-6→3x2, 7-8→4x2. No manual layout picker needed.
+- **Toggleable analysis** — Right panel takes 380px, hiding it gives the chart full width for price action focus.
+
+### Now Unblocked
+- URL-based compare state (share compare views)
+- Persistent compare lists (localStorage)
+
+### Known Issues
+- Compare state is lost on page refresh (in-memory only)
+- Max 8 panels hardcoded
+
+### Next Up
+- Demo flow polish
+
+---
+
+## [2026-02-21 14:00] TradingView-Grade Chart Platform + Filters
+
+### What Changed
+
+**New files created:**
+- `src/lib/chart-types.ts` — Shared chart type defs (ChartType, TimeFrame, ChartDataPoint, OhlcDataPoint, VolumeDataPoint)
+- `src/lib/ohlc.ts` — Server-side OHLC aggregation from raw `{t,p}` points, adaptive bucket sizes per interval
+- `src/lib/fair-value.ts` — localStorage CRUD for per-market fair value with Result<T>
+- `src/lib/chart-events.ts` — Lightweight pub/sub event bus for crosshair sync across panels
+- `src/contexts/chart-settings.tsx` — Global chart settings context (chartType, timeFrame, showVolume, overlays)
+- `src/hooks/use-panel-settings.ts` — Per-panel local override logic with override indicators
+- `src/hooks/use-fair-value.ts` — React hook wrapping localStorage fair value
+- `src/hooks/use-crosshair-sync.ts` — Hook connecting charts to crosshair event bus
+- `src/components/resizable-grid.tsx` — CSS Grid + mouse drag resizable panels, double-click reset
+- `src/components/chart-toolbar.tsx` — [Line][Candle][Area] | [1D][1W][1M][ALL] | [Vol] | [Darwin][FV] + reset
+- `src/components/ohlc-header.tsx` — TradingView-style O:H:L:C:Vol data line
+- `src/components/fair-value-editor.tsx` — Inline probability editor with pencil/save/reset
+
+**Modified files:**
+- `src/components/lightweight-chart.tsx` — Full refactor: stable lifecycle (mount once), line/area/candlestick series toggle via `applyOptions({ visible })`, volume histogram on overlay price scale, crosshair sync support, fair value price line overlay
+- `src/components/compare-panel.tsx` — Added chart toolbar, OHLC header, panel settings, fair value, framer-motion drag animations, crosshair sync refs
+- `src/app/compare/page.tsx` — Replaced fixed 2x2 CSS grid with ResizableGrid, layout selector (1/2/4/6), crosshair sync toggle
+- `src/app/markets/[id]/page.tsx` — Added chart toolbar, OHLC header, fair value editor in signal summary, panel settings
+- `src/app/providers.tsx` — Added ChartSettingsProvider wrapper
+- `src/app/globals.css` — True black background (#0A0A0F), darker card (#111118)
+- `src/app/api/prices/route.ts` — Added `?mode=ohlc` query param for OHLC aggregation
+- `src/hooks/use-prices.ts` — Added `useOhlc()` hook alongside existing `usePrices`
+- `src/app/page.tsx` — Polymarket-style filter bar: search, category pills, sort (Alpha/Volume/Newest/Probability), signal filter (All/Has Signal/High EV/Bullish/Bearish), clear all
+
+### Decisions Made
+- **True black (#0A0A0F)** — User requested TradingView-like high contrast. Changed from #131722.
+- **White line by default** — Market price is white (#FFFFFF), overlays use colors (green/red/blue/yellow). Line width 1px for clean look.
+- **Stable chart lifecycle** — Create chart + all series types once on mount. Toggle visibility via `applyOptions({ visible })`. Avoids flicker on settings changes.
+- **OHLC from raw prices** — Polymarket CLOB only returns `{t,p}`. Aggregate server-side with adaptive buckets: 1d→5min, 1w→1hr, 1m→4hr, all→1day. Volume = tick count (activity proxy).
+- **Resizable grid via CSS Grid + mouse events** — No external library. colSplits/rowSplits state as fractions. Reset on panelCount change.
+- **Global + local settings** — ChartSettings context for global defaults, per-panel overrides with blue dot indicators and reset button.
+- **Fair value in localStorage** — Key `darwin_fv_${marketId}`. Falls back to Darwin AI estimate if no custom value.
+- **Category pills from API data** — Categories extracted dynamically from market data, not hardcoded.
+
+### Now Unblocked
+- Demo polish: loading states, error handling
+- Background scanner integration with new chart components
+- Sentiment overlay (placeholder in settings, needs data source)
+
+### Known Issues
+- Crosshair sync works via event bus but `subscribeCrosshairMove` doesn't return an unsubscribe function in lightweight-charts v5 — cleanup relies on chart removal
+- Volume data is tick-count proxy, not actual trade volume (Polymarket CLOB limitation)
+- Fair value editor doesn't validate against negative or >100% values on paste
+
+### Next Up
+- Wire sentiment overlay when data source available
+- Add keyboard shortcuts for chart type toggle
+- Demo flow polish
+
+---
+
 ## [2026-02-21 00:00] Documentation Rewrite
 
 ### What Changed

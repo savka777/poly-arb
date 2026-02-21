@@ -45,8 +45,8 @@
   --radius-2xl: calc(var(--radius) + 8px);
 
   /* Darwin custom colors */
-  --color-darwin-bg: #131722;
-  --color-darwin-card: #1C2030;
+  --color-darwin-bg: #0A0A0F;
+  --color-darwin-card: #111118;
   --color-darwin-hover: #242838;
   --color-darwin-elevated: #2A2E42;
   --color-darwin-green: #00D47E;
@@ -62,14 +62,14 @@
 :root {
   --radius: 0.25rem;
   /* Dark-only app — use Darwin palette as default */
-  --background: #131722;
+  --background: #0A0A0F;
   --foreground: #E8E8ED;
-  --card: #1C2030;
+  --card: #111118;
   --card-foreground: #E8E8ED;
-  --popover: #1C2030;
+  --popover: #111118;
   --popover-foreground: #E8E8ED;
   --primary: #E8E8ED;
-  --primary-foreground: #131722;
+  --primary-foreground: #0A0A0F;
   --secondary: #2A2E42;
   --secondary-foreground: #E8E8ED;
   --muted: #2A2E42;
@@ -85,7 +85,7 @@
   --chart-3: #FFAA00;
   --chart-4: #FF4444;
   --chart-5: #8888A0;
-  --sidebar: #1C2030;
+  --sidebar: #111118;
   --sidebar-foreground: #E8E8ED;
   --sidebar-primary: #4488FF;
   --sidebar-primary-foreground: #E8E8ED;
