@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import Link from "next/link"
 import { useMarkets } from "@/hooks/use-markets"
 import { useSignals } from "@/hooks/use-signals"
 import { useHealth } from "@/hooks/use-health"
@@ -51,20 +52,28 @@ export default function MarketGrid() {
           <h1 className="text-lg font-semibold tracking-tight text-darwin-text">
             DARWIN CAPITAL
           </h1>
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                "h-2 w-2 rounded-full",
-                health?.status === "ok"
-                  ? "bg-darwin-green animate-pulse"
-                  : "bg-darwin-text-muted"
-              )}
-            />
-            <span className="text-xs text-darwin-text-secondary">
-              {health?.lastScanAt
-                ? `Scanned ${relativeTime(health.lastScanAt)}`
-                : "Scanning..."}
-            </span>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/research"
+              className="text-xs font-mono text-darwin-text-secondary hover:text-darwin-blue transition-colors"
+            >
+              Evidence →
+            </Link>
+            <div className="flex items-center gap-2">
+              <div
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  health?.status === "ok"
+                    ? "bg-darwin-green animate-pulse"
+                    : "bg-darwin-text-muted"
+                )}
+              />
+              <span className="text-xs text-darwin-text-secondary">
+                {health?.lastScanAt
+                  ? `Scanned ${relativeTime(health.lastScanAt)}`
+                  : "Scanning..."}
+              </span>
+            </div>
           </div>
         </div>
       </header>
