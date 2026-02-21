@@ -10,9 +10,9 @@
 ### Foundation (Sprint 1)
 
 - [x] Initialize Next.js 14+ project with App Router
-- [x] Core type files: `src/lib/types.ts` (`Result<T>`, `Market`, `Signal`, `Direction`, `TradeProposal`)
+- [x] Core type files: `src/lib/types.ts` (`Result<T>`, `Market`, `Signal`, `Direction`, `TradeProposal`, raw API shapes)
 - [x] `src/lib/result.ts` — `ok()`, `err()`, `isOk()` helpers
-- [x] `src/lib/model.ts` — Vercel AI SDK + Vertex AI provider (lazy init)
+- [x] `src/lib/model.ts` — Vercel AI SDK + Vertex AI Anthropic provider (lazy init)
 - [x] `src/lib/config.ts` — env loading with defaults
 - [x] `.env.example` with all required vars
 - [x] `tsconfig.json` — strict mode
@@ -29,13 +29,14 @@
 ### Data Wrappers (Sprint 1)
 
 - [x] `src/data/polymarket.ts` — Gamma API wrapper (market discovery + metadata)
-- [x] `src/data/polymarket.ts` — CLOB API wrapper (real-time prices)
-- [x] `src/data/valyu.ts` — Valyu search API wrapper
+- [x] `src/data/polymarket.ts` — CLOB API wrapper (real-time prices + order book)
+- [x] `src/data/valyu.ts` — Valyu search API wrapper (`/v1/deepsearch`)
 - [x] `src/data/mock.ts` — Mock data providers (5 markets, topic-aware news)
 - [x] All wrappers return `Result<T>`, never throw
-- [x] Normalization: `GammaMarket` -> `Market` mapping
-- [x] Exponential backoff on rate limits
+- [x] Normalization: `GammaMarket` -> `Market` mapping (`gammaToMarket`)
+- [x] Exponential backoff on rate limits (4 attempts: 0/1/2/4s)
 - [x] `USE_MOCK_DATA` toggle for testing without API keys
+- [x] **Gate:** real data fetches return valid typed responses _(Gamma ✓ CLOB ✓ Valyu ✓ all live-verified 2026-02-21)_
 
 ### Agent (Sprint 1)
 

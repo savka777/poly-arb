@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     ? parseInt(searchParams.get('limit')!, 10)
     : undefined;
 
-  const result = await fetchMarkets(category, limit);
+  const result = await fetchMarkets({ category, limit });
 
   if (!result.ok) {
     return NextResponse.json(

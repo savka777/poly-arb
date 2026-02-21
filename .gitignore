@@ -41,3 +41,11 @@ darwin.db-shm
 
 # drizzle
 /drizzle/
+
+# Python cache (leftover from prototyping)
+__pycache__/
+*.pyc
+
+# Editor
+.vscode/
+.idea/

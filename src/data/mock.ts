@@ -4,6 +4,8 @@ export function getMockMarkets(): Market[] {
   return [
     {
       id: 'mock-fed-rate-cut-2026',
+      conditionId: '0xmock_fed_rate_condition',
+      tokenIds: ['mock-fed-yes-token', 'mock-fed-no-token'],
       platform: 'polymarket',
       question: 'Will the Federal Reserve cut interest rates before July 2026?',
       probability: 0.62,
@@ -16,6 +18,8 @@ export function getMockMarkets(): Market[] {
     },
     {
       id: 'mock-us-recession-2026',
+      conditionId: '0xmock_recession_condition',
+      tokenIds: ['mock-recession-yes-token', 'mock-recession-no-token'],
       platform: 'polymarket',
       question: 'Will the US enter a recession in 2026?',
       probability: 0.28,
@@ -28,6 +32,8 @@ export function getMockMarkets(): Market[] {
     },
     {
       id: 'mock-trump-tariff-china',
+      conditionId: '0xmock_tariff_condition',
+      tokenIds: ['mock-tariff-yes-token', 'mock-tariff-no-token'],
       platform: 'polymarket',
       question: 'Will the US impose additional tariffs on China before June 2026?',
       probability: 0.74,
@@ -40,6 +46,8 @@ export function getMockMarkets(): Market[] {
     },
     {
       id: 'mock-ukraine-ceasefire',
+      conditionId: '0xmock_ceasefire_condition',
+      tokenIds: ['mock-ceasefire-yes-token', 'mock-ceasefire-no-token'],
       platform: 'polymarket',
       question: 'Will there be a formal ceasefire in Ukraine before September 2026?',
       probability: 0.19,
@@ -52,6 +60,8 @@ export function getMockMarkets(): Market[] {
     },
     {
       id: 'mock-btc-100k',
+      conditionId: '0xmock_btc_condition',
+      tokenIds: ['mock-btc-yes-token', 'mock-btc-no-token'],
       platform: 'polymarket',
       question: 'Will Bitcoin exceed $100,000 before April 2026?',
       probability: 0.55,
