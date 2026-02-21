@@ -29,6 +29,35 @@
 
 ---
 
+## [2026-02-21 17:00] Git History Rewrite + Branch Push
+
+### What Changed
+- **Amended:** commit `f8cd48c` → `31ce8a5` — removed `.env` (with live Valyu key) from tree
+- **Untracked:** `.DS_Store`, `.vscode/settings.json`, `__pycache__/` — removed from index
+- **Created:** `.gitignore` — covers `.env`, `.env.local`, `node_modules/`, `.next/`, `__pycache__/`, `.DS_Store`
+- **Committed:** `89ce4bb` — Sprint 1 data layer (all `src/`, `scripts/`, `.gitignore`, deletions of Python prototypes)
+- **Force-pushed:** `origin/vlad` — rewrote remote history to remove sensitive key
+
+### Decisions Made
+- **Force push required** — history rewrite (amend) always requires `--force` on the remote
+- **`.env` never re-enters index** — `.gitignore` now prevents future accidental commits of secrets
+- **Valyu key should be rotated** — key `asGhqGwape5JafAyk3qDAVSQAHtso312DescfFUa` was on remote before rewrite; treat as compromised
+
+### Now Unblocked
+- All Sprint 1 data work is on `origin/vlad` and visible to teammates
+- Remaining Sprint 1: Next.js init → `src/lib/model.ts` → agent + tools + store
+
+### Known Issues
+- **Valyu key needs rotation** — was publicly exposed in git history before rewrite
+- **No `package.json`** — Next.js project not yet initialized; `npx tsx` works for scripts but `tsc --noEmit` cannot run
+
+### Next Up
+- `npm create next-app` / initialize `package.json` with correct deps
+- `src/lib/model.ts` — Vercel AI SDK entry point
+- Sprint 1 agent work: `src/agent/`, `src/tools/`, `src/store/memory.ts`
+
+---
+
 ## [2026-02-21 16:00] API Implementation — Sprint 1 (Data Wrappers)
 
 ### What Changed

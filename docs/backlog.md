@@ -10,23 +10,23 @@
 ### Foundation (Sprint 1, Hours 0-4)
 
 - [ ] Initialize Next.js 14+ project with App Router
-- [ ] Core type files: `src/lib/types.ts` (`Result<T>`, `Market`, `Signal`, `Direction`, `TradeProposal`)
-- [ ] `src/lib/result.ts` — `ok()`, `err()`, `isOk()` helpers
+- [x] Core type files: `src/lib/types.ts` (`Result<T>`, `Market`, `Signal`, `Direction`, `TradeProposal`, raw API shapes)
+- [x] `src/lib/result.ts` — `ok()`, `err()`, `isOk()` helpers
 - [ ] `src/lib/model.ts` — single LLM entry point via Vercel AI SDK `generateText`
-- [ ] `src/lib/config.ts` — env loading with defaults
-- [ ] `.env.example` with all required vars
-- [ ] `tsconfig.json` — strict mode
-- [ ] **Gate:** `npx tsc --noEmit` passes
+- [x] `src/lib/config.ts` — env loading with defaults
+- [x] `.env.example` with all required vars _(pre-existing)_
+- [ ] `tsconfig.json` — strict mode _(blocked on Next.js init)_
+- [ ] **Gate:** `npx tsc --noEmit` passes _(blocked on Next.js init)_
 
 ### Data Wrappers (Sprint 1, Hours 4-8)
 
-- [ ] `src/data/polymarket.ts` — Gamma API wrapper (market discovery + metadata)
-- [ ] `src/data/polymarket.ts` — CLOB API wrapper (real-time prices + order book)
-- [ ] `src/data/valyu.ts` — Valyu search API wrapper
-- [ ] All wrappers return `Result<T>`, never throw
-- [ ] Normalization: `GammaMarket` -> `Market` mapping
-- [ ] Exponential backoff on rate limits
-- [ ] **Gate:** real data fetches return valid typed responses
+- [x] `src/data/polymarket.ts` — Gamma API wrapper (market discovery + metadata)
+- [x] `src/data/polymarket.ts` — CLOB API wrapper (real-time prices + order book)
+- [x] `src/data/valyu.ts` — Valyu search API wrapper (`/v1/deepsearch`)
+- [x] All wrappers return `Result<T>`, never throw
+- [x] Normalization: `GammaMarket` -> `Market` mapping (`gammaToMarket`)
+- [x] Exponential backoff on rate limits (4 attempts: 0/1/2/4s)
+- [x] **Gate:** real data fetches return valid typed responses _(Gamma ✓ CLOB ✓ live-verified)_
 
 ### Agent + Tools (Sprint 1, Hours 8-16)
 
