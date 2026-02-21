@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Smoke test for all three external API wrappers.
+ * Smoke test for external API wrappers.
  * Run: npx tsx scripts/test-apis.ts
  *
  * Requires VALYU_API_KEY in .env (or environment).
@@ -21,16 +21,16 @@ try {
   }
 } catch { /* .env not found — rely on process.env */ }
 
-import { fetchMarkets, fetchMarketById, fetchTokenPrice, fetchOrderBook } from '../src/data/polymarket'
+import { fetchMarkets, fetchMarketById } from '../src/data/polymarket'
 import { searchNews, buildNewsQuery } from '../src/data/valyu'
 import { isOk } from '../src/lib/result'
 
 function pass(label: string, detail?: string) {
-  console.log(`  ✓ ${label}${detail ? `: ${detail}` : ''}`)
+  console.log(`  \u2713 ${label}${detail ? `: ${detail}` : ''}`)
 }
 
 function fail(label: string, error: string) {
-  console.error(`  ✗ ${label}: ${error}`)
+  console.error(`  \u2717 ${label}: ${error}`)
 }
 
 async function testGammaApi() {
@@ -53,8 +53,6 @@ async function testGammaApi() {
   const first = markets[0]
   console.log(`     First market: "${first.question.slice(0, 60)}..."`)
   console.log(`     probability=${first.probability.toFixed(4)}  liquidity=$${first.liquidity.toFixed(0)}  volume=$${first.volume.toFixed(0)}`)
-  console.log(`     conditionId=${first.conditionId}`)
-  console.log(`     tokenIds=[${first.tokenIds[0].slice(0, 20)}..., ${first.tokenIds[1].slice(0, 20)}...]`)
 
   // fetchMarketById
   const byIdResult = await fetchMarketById(first.id)
@@ -65,36 +63,6 @@ async function testGammaApi() {
   }
 
   return first
-}
-
-async function testClobApi(market: Awaited<ReturnType<typeof testGammaApi>>) {
-  console.log('\n── CLOB API ──────────────────────────────────')
-
-  if (!market) {
-    console.log('  (skipped — no market from Gamma test)')
-    return
-  }
-
-  const yesTokenId = market.tokenIds[0]
-
-  // fetchTokenPrice
-  const priceResult = await fetchTokenPrice(yesTokenId)
-  if (!isOk(priceResult)) {
-    fail(`fetchTokenPrice YES`, priceResult.error)
-  } else {
-    pass(`fetchTokenPrice YES`, `price=${priceResult.data.toFixed(4)}`)
-  }
-
-  // fetchOrderBook
-  const bookResult = await fetchOrderBook(yesTokenId)
-  if (!isOk(bookResult)) {
-    fail(`fetchOrderBook YES`, bookResult.error)
-  } else {
-    const { bids, asks } = bookResult.data
-    pass(`fetchOrderBook YES`, `${bids.length} bids, ${asks.length} asks`)
-    if (bids[0]) console.log(`     best bid: $${bids[bids.length - 1]?.price.toFixed(4)} × ${bids[bids.length - 1]?.size.toFixed(2)}`)
-    if (asks[asks.length - 1]) console.log(`     best ask: $${asks[asks.length - 1]?.price.toFixed(4)} × ${asks[asks.length - 1]?.size.toFixed(2)}`)
-  }
 }
 
 async function testValyuApi(market: Awaited<ReturnType<typeof testGammaApi>>) {
@@ -115,18 +83,17 @@ async function testValyuApi(market: Awaited<ReturnType<typeof testGammaApi>>) {
   pass('searchNews', `${results.length} results`)
 
   for (const r of results) {
-    console.log(`\n     • ${r.title}`)
+    console.log(`\n     \u2022 ${r.title}`)
     console.log(`       source: ${r.source}`)
     console.log(`       content: ${r.content.slice(0, 120).replace(/\n/g, ' ')}...`)
   }
 }
 
 async function main() {
-  console.log('Darwin Capital — API Smoke Test')
+  console.log('Darwin Capital \u2014 API Smoke Test')
   console.log('================================')
 
   const market = await testGammaApi()
-  await testClobApi(market)
   await testValyuApi(market)
 
   console.log('\n================================')

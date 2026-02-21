@@ -26,7 +26,8 @@ import {
   relativeTime,
 } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, TrendingDown, TrendingUp, PanelRightOpen, PanelRightClose } from "lucide-react"
+import { useWatchlist, useToggleWatchlist } from "@/hooks/use-watchlist"
+import { ChevronLeft, TrendingDown, TrendingUp, PanelRightOpen, PanelRightClose, Star } from "lucide-react"
 import type { UTCTimestamp } from "lightweight-charts"
 
 export default function MarketDetailPage({
@@ -41,6 +42,10 @@ export default function MarketDetailPage({
   const [showAnalysis, setShowAnalysis] = useState(true)
   const panelControls = usePanelSettings(id)
   const { settings } = panelControls
+
+  const { data: watchlistData } = useWatchlist()
+  const toggleWatchlist = useToggleWatchlist()
+  const isWatchlisted = watchlistData?.marketIds.includes(id) ?? false
 
   const market = data?.market
   const signal = data?.signals?.[0]
@@ -166,6 +171,26 @@ export default function MarketDetailPage({
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() =>
+              toggleWatchlist.mutate({
+                marketId: id,
+                watchlisted: isWatchlisted,
+              })
+            }
+            className={cn(
+              "flex items-center gap-1.5 border px-2.5 py-1 text-xs transition-colors",
+              isWatchlisted
+                ? "border-yellow-500/50 text-yellow-500"
+                : "border-darwin-border text-darwin-text-secondary hover:border-darwin-text-muted hover:text-darwin-text"
+            )}
+            title={isWatchlisted ? "Remove from watchlist" : "Add to watchlist"}
+          >
+            <Star
+              className={cn("h-3.5 w-3.5", isWatchlisted && "fill-yellow-500")}
+            />
+            {isWatchlisted ? "Watchlisted" : "Watch"}
+          </button>
           <button
             onClick={() => setShowAnalysis((p) => !p)}
             className={cn(

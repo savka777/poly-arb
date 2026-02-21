@@ -26,3 +26,8 @@ export const markets = sqliteTable('markets', {
   category: text('category'),
   lastUpdated: text('last_updated').notNull(),
 });
+
+export const watchlist = sqliteTable('watchlist', {
+  marketId: text('market_id').primaryKey(),
+  addedAt: text('added_at').notNull(),
+});

@@ -34,6 +34,14 @@ export interface Signal {
   expiresAt: string
 }
 
+export interface NewsResult {
+  title: string
+  url?: string
+  content: string
+  source: string
+  relevanceScore: number
+}
+
 export interface TradeProposal {
   id: string
   marketId: string
@@ -48,12 +56,21 @@ export interface TradeProposal {
 }
 
 export interface ToolCallRecord {
-  id: string
-  toolName: string
+  id?: string
+  name: string
+  toolName?: string
   input: Record<string, unknown>
   output: Record<string, unknown>
-  durationMs: number
+  durationMs?: number
   timestamp: string
+}
+
+export interface ScannerStatus {
+  running: boolean
+  lastScanAt: string | null
+  marketsScanned: number
+  signalsGenerated: number
+  nextScanAt: string | null
 }
 
 export interface HealthResponse {
@@ -61,6 +78,7 @@ export interface HealthResponse {
   uptime: number
   lastScanAt: string | null
   signalCount: number
+  scanner: ScannerStatus
 }
 
 export interface MarketsResponse {

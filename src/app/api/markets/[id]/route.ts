@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { MarketDetailResponse } from "@/lib/types"
 import { fetchMarketById } from "@/data/polymarket"
-import { MOCK_MARKETS, MOCK_SIGNALS } from "@/lib/mock-data"
+import { getSignalsByMarket } from "@/store/signals"
 
 export async function GET(
   _request: Request,
@@ -9,31 +9,19 @@ export async function GET(
 ) {
   const { id } = await params
 
-  // Try real Polymarket first
   const result = await fetchMarketById(id)
 
-  if (result.ok) {
-    const response: MarketDetailResponse = {
-      market: result.data,
-      signals: MOCK_SIGNALS.filter((s) => s.marketId === id),
-    }
-    return NextResponse.json(response)
-  }
-
-  // Fallback to mock data
-  const market = MOCK_MARKETS.find((m) => m.id === id)
-
-  if (!market) {
+  if (!result.ok) {
     return NextResponse.json(
       { error: "Market not found", status: 404 },
       { status: 404 }
     )
   }
 
-  const signals = MOCK_SIGNALS.filter((s) => s.marketId === id)
+  const signals = getSignalsByMarket(id)
 
   const response: MarketDetailResponse = {
-    market,
+    market: result.data,
     signals,
   }
   return NextResponse.json(response)

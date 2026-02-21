@@ -11,7 +11,6 @@
 import { ok, err } from '../lib/result';
 import type { Result, NewsResult } from '../lib/types';
 import { config } from '../lib/config';
-import { getMockNewsResults } from './mock';
 
 // ─── Raw API types ────────────────────────────────────────────────────────────
 
@@ -95,15 +94,11 @@ export async function searchNews(
   maxResults = 5,
   searchType: ValyuSearchRequest['search_type'] = 'all',
 ): Promise<Result<NewsResult[]>> {
-  if (config.useMockData) {
-    return ok(getMockNewsResults(query));
-  }
-
   if (!query.trim()) {
     return err('searchNews: query must not be empty');
   }
 
-  const url = `${config.valyu.baseUrl}/deepsearch`;
+  const url = 'https://api.valyu.network/v1/deepsearch';
 
   const body: ValyuSearchRequest = {
     query,

@@ -29,6 +29,70 @@
 
 ---
 
+## [2026-02-21 23:30] Full Build Fix — Zero TypeScript Errors + Dev Server Running
+
+### What Changed
+
+**API Routes — Wired to Real Agent Pipeline:**
+- **Rewritten:** `src/app/api/analyze/route.ts` — replaced 100% mock analyze endpoint with real `runEventPod()` pipeline. Fetches market via `fetchMarketById()`, runs full LangGraph pipeline (news → LLM → divergence → signal), returns real `{ signal, reasoning, toolCalls }`.
+- **Rewritten:** `src/app/api/signals/route.ts` — reads from SQLite via `getSignals()` instead of `MOCK_SIGNALS`. Supports `?confidence=high` and `?minEv=0.05` query params.
+- **Rewritten:** `src/app/api/markets/[id]/route.ts` — uses `getSignalsByMarket(id)` from SQLite instead of `MOCK_SIGNALS`.
+- **Rewritten:** `src/app/api/health/route.ts` — triggers `startScanner()` on first request. Returns real signal count from SQLite + scanner status.
+
+**Background Scanner:**
+- **Created:** `src/scanner/index.ts` — singleton scanner that runs inside Next.js server process. Fetches top 20 markets + watchlist each cycle, runs `runEventPod()` sequentially. Lazy-starts on first `/api/health` hit. Configurable via `config.cycleIntervalMs` (default 5 min).
+
+**Watchlist System:**
+- **Modified:** `src/db/schema.ts` — added `watchlist` table (marketId TEXT PK, addedAt TEXT).
+- **Modified:** `src/db/index.ts` — added `CREATE TABLE IF NOT EXISTS watchlist` to init SQL.
+- **Created:** `src/store/watchlist.ts` — CRUD: `addToWatchlist`, `removeFromWatchlist`, `getWatchlist`, `isWatchlisted`.
+- **Created:** `src/app/api/watchlist/route.ts` — `GET` (list), `POST` (add), `DELETE` (remove) endpoints.
+- **Created:** `src/hooks/use-watchlist.ts` — React Query hooks: `useWatchlist()` for list, `useToggleWatchlist()` mutation.
+- **Modified:** `src/app/markets/[id]/page.tsx` — added star/bookmark button in header to toggle watchlist. Yellow fill when active.
+- **Modified:** `src/app/page.tsx` — passes `watchlisted` prop to MarketCard for badge display.
+- **Modified:** `src/components/market-card.tsx` — shows yellow star icon on watchlisted market cards.
+
+**Type System Fixes (got `npx tsc --noEmit` to ZERO errors):**
+- **Modified:** `src/lib/types.ts` — added `NewsResult` interface (was imported but never declared), added `ScannerStatus` interface, added `scanner` field to `HealthResponse`, fixed `ToolCallRecord` (renamed `toolName` → `name`, made `id`/`durationMs` optional, kept `toolName` as optional alias).
+- **Modified:** `src/components/analysis-feed.tsx` — handles both `name` and `toolName` via `toolCall.name ?? toolCall.toolName`, conditionally renders `durationMs`.
+- **Modified:** `src/lib/mock-data.ts` — changed `toolName:` → `name:` in MOCK_TOOL_CALLS to match updated interface.
+- **Modified:** `src/data/mock.ts` — removed `conditionId`/`tokenIds` from mock Market objects (fields don't exist on `Market` interface).
+- **Modified:** `src/data/valyu.ts` — removed `config.useMockData` check and `getMockNewsResults` import (neither exist), hardcoded Valyu API URL instead of `config.valyu.baseUrl`.
+- **Modified:** `scripts/test-apis.ts` — removed references to deleted exports `fetchTokenPrice`/`fetchOrderBook` and deleted properties `conditionId`/`tokenIds`.
+
+**Dependency Installs (were imported but missing from package.json):**
+- `drizzle-orm`, `better-sqlite3`, `@types/better-sqlite3` — SQLite/Drizzle ORM
+- `@langchain/langgraph` — LangGraph agent orchestration
+- `@ai-sdk/google-vertex` — Vertex AI provider for LLM
+- `drizzle-kit` — Drizzle migrations/introspect tooling
+
+**Build Fixes:**
+- **Deleted:** `postcss.config.js` — conflicted with correct `postcss.config.mjs` (old file used `tailwindcss` directly as plugin; correct file uses `@tailwindcss/postcss`).
+- **Modified:** `.gitignore` — added `darwin.db`, `darwin.db-shm`, `darwin.db-wal` to prevent committing SQLite files.
+
+### Decisions Made
+- **Sequential scanning** — `runEventPod()` calls run one at a time to avoid exhausting Valyu + LLM API rate limits. Concurrency can be added later.
+- **Lazy scanner start** — Scanner starts on first `/api/health` hit rather than on module import, so it doesn't interfere with builds or cold starts.
+- **No mock data imports in API routes** — All API routes now use only real data sources (Gamma API + SQLite). Mock data files remain for development/testing only.
+- **Watchlist priority** — Watchlisted markets are fetched and analyzed first in each scanner cycle, before top-volume markets.
+
+### Now Unblocked
+- Full demo flow: grid → click market → Analyze → see real AI signals with real news
+- Background intelligence: scanner populates signals automatically
+- Watchlist: users can track specific markets for priority scanning
+- `npx tsc --noEmit` passes with zero errors — clean build
+
+### Known Issues
+- Scanner requires `VALYU_API_KEY` + LLM credentials to produce signals. Without these, pipeline will error gracefully but produce no signals.
+- `next.config.js` warns about `experimental.serverComponentsExternalPackages` → should migrate to `serverExternalPackages` (non-breaking, just a deprecation warning).
+
+### Next Up
+- Verify full demo flow end-to-end with live API keys
+- Demo flow polish and error state handling
+- Scanner concurrency controls (semaphore-based)
+
+---
+
 ## [2026-02-21 20:00] Pipeline Config System + Expired Market Fix
 
 ### What Changed

@@ -42,6 +42,10 @@ export function getDb(): BetterSQLite3Database<typeof schema> {
         category TEXT,
         last_updated TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS watchlist (
+        market_id TEXT PRIMARY KEY,
+        added_at TEXT NOT NULL
+      );
     `);
 
     _db = drizzle(sqlite, { schema });
