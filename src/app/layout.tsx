@@ -14,7 +14,7 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Darwin Capital",
+  title: "Polyverse",
   description: "AI-powered prediction market alpha detection",
 }
 

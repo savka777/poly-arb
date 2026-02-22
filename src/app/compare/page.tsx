@@ -388,7 +388,7 @@ function ComparePageInner() {
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-darwin-border px-4">
         <div className="flex items-center gap-4">
           <a href="/" className="text-sm font-semibold tracking-tight text-darwin-text hover:text-darwin-text-secondary transition-colors">
-            DARWIN CAPITAL
+            POLYVERSE
           </a>
           <span className="text-xs font-medium tracking-wider text-darwin-text-secondary uppercase">
             Compare

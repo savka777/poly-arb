@@ -81,19 +81,11 @@ function AgentStatsOverlay({ onOpenConfig }: { onOpenConfig: () => void }) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-[#44aaff] animate-pulse" />
-                <span className="text-xs uppercase tracking-wider text-[#44aaff]">Scout</span>
+                <span className="text-xs uppercase tracking-wider text-[#44aaff]">Signal Scout</span>
               </div>
-              <button
-                onClick={onOpenConfig}
-                style={{ pointerEvents: "auto" }}
-                className="text-xs text-[#667788] hover:text-[#44aaff] transition-colors leading-none"
-                title="Configure scout keywords"
-              >
-                👽
-              </button>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-[#99aabb] truncate">{scoutLabel}</span>
+              <span className="text-[10px] text-[#556688] truncate">Click UFO to configure scout</span>
             </div>
           </div>
         </div>
@@ -194,7 +186,7 @@ function ScoutConfigPanel({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="bg-[#07091a]/95 backdrop-blur border border-[#1a2a44] rounded-2xl p-5 w-[380px] shadow-2xl shadow-black/70"
+        className="bg-[#0a0a12]/95 backdrop-blur border border-[#2a2a3a] rounded-2xl p-5 w-[380px] shadow-2xl shadow-black/70"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Alien header */}
@@ -202,10 +194,10 @@ function ScoutConfigPanel({ onClose }: { onClose: () => void }) {
           <div className="flex items-start gap-3">
             <span className="text-3xl select-none leading-none mt-0.5">👽</span>
             <div>
-              <p className="text-[13px] font-medium text-[#9bbee0] leading-snug min-h-[2.4rem]">
+              <p className="text-[13px] font-medium text-[#aabbcc] leading-snug min-h-[2.4rem]">
                 {GREETING.slice(0, charIdx)}
                 {talking && (
-                  <span className="animate-pulse text-[#3399ff]">▋</span>
+                  <span className="animate-pulse text-[#8899aa]">▋</span>
                 )}
               </p>
             </div>
@@ -219,7 +211,7 @@ function ScoutConfigPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-[#1a2a44] mb-3" />
+        <div className="border-t border-[#2a2a3a] mb-3" />
 
         {/* Label */}
         <p className="text-xs uppercase tracking-wider text-[#778899] mb-2">
@@ -235,11 +227,11 @@ function ScoutConfigPanel({ onClose }: { onClose: () => void }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="e.g. bitcoin, trump, fed..."
-            className="flex-1 bg-[#0d1520] border border-[#1a2a44] rounded-lg px-3 py-1.5 text-sm text-[#ccd0e0] placeholder-[#2a3a50] outline-none focus:border-[#2255aa] transition-colors"
+            className="flex-1 bg-[#0d0d14] border border-[#2a2a3a] rounded-lg px-3 py-1.5 text-sm text-[#ccd0e0] placeholder-[#444455] outline-none focus:border-[#555566] transition-colors"
           />
           <button
             onClick={addKeyword}
-            className="px-3 py-1.5 bg-[#132244] hover:bg-[#1a3060] text-[#4488dd] text-sm rounded-lg border border-[#1e3a6a] transition-colors"
+            className="px-3 py-1.5 bg-[#1a1a24] hover:bg-[#252530] text-[#aabbcc] text-sm rounded-lg border border-[#2a2a3a] transition-colors"
           >
             + Add
           </button>
@@ -251,7 +243,7 @@ function ScoutConfigPanel({ onClose }: { onClose: () => void }) {
             {keywords.map((kw) => (
               <span
                 key={kw}
-                className="flex items-center gap-1 bg-[#0f1e38] text-[#6699cc] text-xs px-2 py-0.5 rounded-full border border-[#1e3054]"
+                className="flex items-center gap-1 bg-[#151520] text-[#8899aa] text-xs px-2 py-0.5 rounded-full border border-[#2a2a3a]"
               >
                 {kw}
                 <button
@@ -504,7 +496,7 @@ export function GalaxyScene() {
           )}
           <div>
             <h1 className="text-lg font-semibold tracking-tight text-[#ccd0e0]">
-              DARWIN CAPITAL
+              POLYVERSE
             </h1>
             {focusedConstellation && (
               <span className="text-xs uppercase tracking-wider text-[#8899aa]">
