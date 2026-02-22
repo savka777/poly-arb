@@ -56,6 +56,25 @@ export function useOverlayPrices(
   })
 }
 
+export interface OrderBookData {
+  bids: Array<{ price: number; size: number }>
+  asks: Array<{ price: number; size: number }>
+}
+
+export function useOrderBook(tokenId: string | undefined) {
+  return useQuery<OrderBookData>({
+    queryKey: ["orderbook", tokenId],
+    queryFn: async () => {
+      const params = new URLSearchParams({ tokenId: tokenId! })
+      const res = await fetch(`/api/orderbook?${params}`)
+      if (!res.ok) throw new Error("Failed to fetch order book")
+      return res.json()
+    },
+    enabled: !!tokenId,
+    staleTime: 15_000,
+  })
+}
+
 export function useOhlc(
   tokenId: string | undefined,
   interval: "1d" | "1w" | "1m" | "all" = "all"

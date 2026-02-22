@@ -281,6 +281,42 @@ export async function fetchMarketById(id: string): Promise<Result<Market>> {
   }
 }
 
+export interface OrderBookEntry {
+  price: number
+  size: number
+}
+
+export interface OrderBook {
+  bids: OrderBookEntry[]
+  asks: OrderBookEntry[]
+}
+
+export async function fetchOrderBook(
+  clobTokenId: string
+): Promise<Result<OrderBook>> {
+  const params = new URLSearchParams({ token_id: clobTokenId })
+  const result = await fetchWithRetry(`${CLOB_BASE}/book?${params}`)
+  if (!result.ok) return err(result.error)
+
+  try {
+    const data = (await result.data.json()) as {
+      bids?: Array<{ price: string; size: string }>
+      asks?: Array<{ price: string; size: string }>
+    }
+    const bids = (data.bids ?? []).map((b) => ({
+      price: parseFloat(b.price),
+      size: parseFloat(b.size),
+    }))
+    const asks = (data.asks ?? []).map((a) => ({
+      price: parseFloat(a.price),
+      size: parseFloat(a.size),
+    }))
+    return ok({ bids, asks })
+  } catch (e) {
+    return err(`Failed to parse order book: ${e instanceof Error ? e.message : String(e)}`)
+  }
+}
+
 export async function fetchPriceHistory(
   clobTokenId: string,
   interval: "1d" | "1w" | "1m" | "all" = "all",

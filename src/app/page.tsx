@@ -1,30 +1,27 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Search, X, ArrowUpDown, TrendingUp, Flame, Clock, LayoutGrid, Zap, Grid3x3, Circle, Newspaper, Activity, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, X, ArrowUpDown, TrendingUp, Flame, Clock, LayoutGrid, Zap, Grid3x3, Circle, Activity } from "lucide-react"
 import { useMarkets } from "@/hooks/use-markets"
 import { useSignals } from "@/hooks/use-signals"
 import { useHealth } from "@/hooks/use-health"
 import { useWatchlist } from "@/hooks/use-watchlist"
-import { useNewsEvents } from "@/hooks/use-news-events"
-import { useActivity } from "@/hooks/use-activity"
 import { MarketCard } from "@/components/market-card"
 import { CompareLink } from "@/components/compare-link"
 import { HeatMatrix } from "@/components/heat-matrix"
 import { SignalTicker } from "@/components/signal-ticker"
 import { BubbleScatter } from "@/components/bubble-scatter"
-import { NewsTicker } from "@/components/news-ticker"
-import { NewsFeed } from "@/components/news-feed"
-import { ActivityFeed } from "@/components/activity-feed"
+import { SignalFeed } from "@/components/signal-feed"
 import type { Market, Signal, SignalsResponse } from "@/lib/types"
 import { relativeTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-type ViewTab = "markets" | "heatmap" | "signals" | "scatter"
+type ViewTab = "feed" | "markets" | "heatmap" | "signals" | "scatter"
 type SortMode = "alpha" | "volume" | "newest" | "probability"
 type SignalFilter = "all" | "has-signal" | "high-ev" | "bullish" | "bearish"
 
 const VIEW_TABS: { value: ViewTab; label: string; icon: typeof LayoutGrid }[] = [
+  { value: "feed", label: "Feed", icon: Activity },
   { value: "markets", label: "Markets", icon: LayoutGrid },
   { value: "heatmap", label: "Heat Map", icon: Grid3x3 },
   { value: "signals", label: "Signals", icon: Zap },
@@ -52,6 +49,15 @@ function extractCategories(markets: Market[]): string[] {
     if (m.category) cats.add(m.category)
   }
   return [...cats].sort()
+}
+
+function matchesSearch(market: Market, query: string): boolean {
+  if (!query) return true
+  const q = query.toLowerCase()
+  return (
+    market.question.toLowerCase().includes(q) ||
+    (market.category?.toLowerCase().includes(q) ?? false)
+  )
 }
 
 function matchesSignalFilter(
@@ -95,26 +101,18 @@ function sortMarkets(
   })
 }
 
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
-  return String(n)
-}
-
 export default function MarketGrid() {
-  const [page, setPage] = useState(1)
-  const [activeTab, setActiveTab] = useState<ViewTab>("markets")
+  const { data: marketsData, isLoading: marketsLoading } = useMarkets()
+  const { data: signalsData } = useSignals()
+  const { data: health } = useHealth()
+  const { data: watchlistData } = useWatchlist()
+  const watchlistedIds = new Set(watchlistData?.marketIds ?? [])
+
+  const [activeTab, setActiveTab] = useState<ViewTab>("feed")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>("alpha")
   const [signalFilter, setSignalFilter] = useState<SignalFilter>("all")
-  const [newsFeedOpen, setNewsFeedOpen] = useState(false)
-  const [activityOpen, setActivityOpen] = useState(false)
-
-  const isSignalFilter = signalFilter !== "all"
-
-  // Signals come first so we can derive market IDs for signal filters
-  const { data: signalsData } = useSignals()
 
   const signalsByMarket = useMemo(() => {
     if (!signalsData?.signals) return new Map<string, SignalsResponse["signals"][number]>()
@@ -128,68 +126,30 @@ export default function MarketGrid() {
     return map
   }, [signalsData])
 
-  // When a signal filter is active, ask the server for only the markets with signals
-  const signalMarketIds = useMemo(() => {
-    if (!isSignalFilter || signalsByMarket.size === 0) return undefined
-    const ids: string[] = []
-    for (const [marketId, signal] of signalsByMarket) {
-      switch (signalFilter) {
-        case "has-signal":
-          ids.push(marketId)
-          break
-        case "high-ev":
-          if (Math.abs(signal.ev) >= 0.05) ids.push(marketId)
-          break
-        case "bullish":
-          if (signal.ev > 0) ids.push(marketId)
-          break
-        case "bearish":
-          if (signal.ev < 0) ids.push(marketId)
-          break
-      }
-    }
-    return ids.length > 0 ? ids : undefined
-  }, [isSignalFilter, signalFilter, signalsByMarket])
-
-  // Pass search to server-side when we have SQLite data
-  const { data: marketsData, isLoading: marketsLoading } = useMarkets({
-    page: isSignalFilter ? 1 : page,
-    limit: isSignalFilter ? 200 : 50,
-    sort: sortMode === "volume" ? "volume" : sortMode === "probability" ? "probability" : "volume24hr",
-    category: selectedCategory ?? undefined,
-    search: searchQuery || undefined,
-    marketIds: signalMarketIds,
-  })
-  const { data: health } = useHealth()
-  const { data: watchlistData } = useWatchlist()
-  const { data: newsData } = useNewsEvents()
-  const { data: activityData } = useActivity(100)
-  const watchlistedIds = new Set(watchlistData?.marketIds ?? [])
-
   const allMarkets = marketsData?.markets ?? []
   const categories = useMemo(() => extractCategories(allMarkets), [allMarkets])
-  const totalPages = isSignalFilter ? 1 : (marketsData?.totalPages ?? 1)
-  const totalMarkets = marketsData?.total ?? 0
 
   const filteredMarkets = useMemo(() => {
     let markets = allMarkets
 
-    // Sort by alpha (EV) if selected — other sorts handled server-side
-    if (sortMode === "alpha" || sortMode === "newest") {
-      return sortMarkets(markets, signalsByMarket, sortMode)
+    if (selectedCategory) {
+      markets = markets.filter((m) => m.category === selectedCategory)
     }
 
-    return markets
-  }, [allMarkets, sortMode, signalsByMarket])
+    markets = markets.filter((m) => matchesSearch(m, searchQuery))
+
+    markets = markets.filter((m) =>
+      matchesSignalFilter(m, signalsByMarket.get(m.id), signalFilter)
+    )
+
+    return sortMarkets(markets, signalsByMarket, sortMode)
+  }, [allMarkets, selectedCategory, searchQuery, signalFilter, sortMode, signalsByMarket])
 
   const activeSignals = signalsData?.total ?? 0
+  const marketsScanned = marketsData?.total ?? 0
   const highEv = signalsData?.signals.filter(
     (s) => s.confidence === "high"
   ).length ?? 0
-
-  const queueSize = health?.orchestrator?.queueSize ?? 0
-  const rssFeeds = health?.orchestrator?.rss?.feedCount ?? 0
-  const rssArticles = health?.orchestrator?.rss?.totalArticlesSeen ?? 0
 
   const hasActiveFilters = selectedCategory !== null || searchQuery !== "" || signalFilter !== "all"
 
@@ -203,30 +163,6 @@ export default function MarketGrid() {
               DARWIN CAPITAL
             </a>
             <CompareLink />
-            <button
-              onClick={() => setNewsFeedOpen((v) => !v)}
-              className={cn(
-                "flex items-center gap-1.5 border px-2.5 py-1 text-xs transition-colors",
-                newsFeedOpen
-                  ? "border-darwin-blue text-darwin-blue bg-darwin-blue/10"
-                  : "border-darwin-border text-darwin-text-secondary hover:border-darwin-text-muted hover:text-darwin-text"
-              )}
-            >
-              <Newspaper className="h-3.5 w-3.5" />
-              News
-            </button>
-            <button
-              onClick={() => setActivityOpen((v) => !v)}
-              className={cn(
-                "flex items-center gap-1.5 border px-2.5 py-1 text-xs transition-colors",
-                activityOpen
-                  ? "border-darwin-green text-darwin-green bg-darwin-green/10"
-                  : "border-darwin-border text-darwin-text-secondary hover:border-darwin-text-muted hover:text-darwin-text"
-              )}
-            >
-              <Activity className="h-3.5 w-3.5" />
-              Activity
-            </button>
           </div>
           <div className="flex items-center gap-2">
             <div
@@ -246,30 +182,13 @@ export default function MarketGrid() {
         </div>
       </header>
 
-      {/* Activity feed panel (collapsible) */}
-      <ActivityFeed
-        entries={activityData?.entries ?? []}
-        open={activityOpen}
-        onClose={() => setActivityOpen(false)}
-      />
-
-      {/* News feed panel (collapsible) */}
-      <NewsFeed
-        events={newsData?.events ?? []}
-        open={newsFeedOpen}
-        onClose={() => setNewsFeedOpen(false)}
-      />
-
       {/* Stats bar + View tabs */}
       <div className="border-b border-darwin-border px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <StatItem label="Markets" value={formatNumber(totalMarkets)} />
-            <StatItem label="Signals" value={String(activeSignals)} />
-            <StatItem label="High-EV" value={String(highEv)} highlight />
-            <StatItem label="RSS Feeds" value={String(rssFeeds)} />
-            <StatItem label="Articles" value={formatNumber(rssArticles)} />
-            <StatItem label="Queue" value={String(queueSize)} />
+            <StatItem label="Active Signals" value={activeSignals} />
+            <StatItem label="Markets Scanned" value={marketsScanned} />
+            <StatItem label="High-EV" value={highEv} highlight />
           </div>
           <div className="flex items-center gap-0.5 border border-darwin-border">
             {VIEW_TABS.map(({ value, label, icon: Icon }) => (
@@ -291,13 +210,6 @@ export default function MarketGrid() {
         </div>
       </div>
 
-      {/* News ticker */}
-      <NewsTicker
-        events={newsData?.events?.slice(0, 8) ?? []}
-        running={health?.newsMonitor?.running ?? false}
-        onOpenFeed={() => setNewsFeedOpen(true)}
-      />
-
       {/* Filter bar — only for markets view */}
       {activeTab === "markets" && (
         <div className="border-b border-darwin-border px-6 py-3 space-y-3">
@@ -308,18 +220,12 @@ export default function MarketGrid() {
                 type="text"
                 placeholder="Search markets..."
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setPage(1)
-                }}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-8 w-full bg-darwin-card pl-8 pr-8 text-xs text-darwin-text placeholder:text-darwin-text-muted border border-darwin-border outline-none focus:border-darwin-blue transition-colors"
               />
               {searchQuery && (
                 <button
-                  onClick={() => {
-                    setSearchQuery("")
-                    setPage(1)
-                  }}
+                  onClick={() => setSearchQuery("")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-darwin-text-muted hover:text-darwin-text"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -331,10 +237,7 @@ export default function MarketGrid() {
               {SORT_OPTIONS.map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}
-                  onClick={() => {
-                    setSortMode(value)
-                    setPage(1)
-                  }}
+                  onClick={() => setSortMode(value)}
                   className={cn(
                     "flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium uppercase transition-colors",
                     sortMode === value
@@ -353,10 +256,7 @@ export default function MarketGrid() {
               {SIGNAL_FILTERS.map(({ value, label }) => (
                 <button
                   key={value}
-                  onClick={() => {
-                    setSignalFilter(value)
-                    setPage(1)
-                  }}
+                  onClick={() => setSignalFilter(value)}
                   className={cn(
                     "px-2.5 py-1.5 text-[11px] font-medium uppercase transition-colors",
                     signalFilter === value
@@ -377,7 +277,6 @@ export default function MarketGrid() {
                     setSearchQuery("")
                     setSelectedCategory(null)
                     setSignalFilter("all")
-                    setPage(1)
                   }}
                   className="flex items-center gap-1 px-2 py-1.5 text-[11px] text-darwin-text-muted hover:text-darwin-text transition-colors"
                 >
@@ -391,10 +290,7 @@ export default function MarketGrid() {
           {categories.length > 0 && (
             <div className="flex items-center gap-1.5 overflow-x-auto">
               <button
-                onClick={() => {
-                  setSelectedCategory(null)
-                  setPage(1)
-                }}
+                onClick={() => setSelectedCategory(null)}
                 className={cn(
                   "shrink-0 px-3 py-1 text-[11px] font-medium transition-colors border",
                   selectedCategory === null
@@ -407,10 +303,9 @@ export default function MarketGrid() {
               {categories.map((cat) => (
                 <button
                   key={cat}
-                  onClick={() => {
+                  onClick={() =>
                     setSelectedCategory(selectedCategory === cat ? null : cat)
-                    setPage(1)
-                  }}
+                  }
                   className={cn(
                     "shrink-0 px-3 py-1 text-[11px] font-medium transition-colors border capitalize",
                     selectedCategory === cat
@@ -427,48 +322,20 @@ export default function MarketGrid() {
       )}
 
       {/* Tab content */}
+      {activeTab === "feed" && (
+        <main className="px-6 py-4">
+          <SignalFeed markets={allMarkets} signalMap={signalsByMarket} />
+        </main>
+      )}
+
       {activeTab === "markets" && (
         <>
-          {/* Results count + pagination */}
-          <div className="px-6 pt-4 pb-2 flex items-center justify-between">
+          <div className="px-6 pt-4 pb-2">
             <span className="text-[11px] text-darwin-text-muted">
               {filteredMarkets.length} market{filteredMarkets.length !== 1 ? "s" : ""}
               {hasActiveFilters ? " (filtered)" : ""}
-              {totalPages > 1 && ` — page ${page} of ${totalPages}`}
             </span>
-            {totalPages > 1 && (
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className={cn(
-                    "p-1 transition-colors",
-                    page <= 1
-                      ? "text-darwin-text-muted cursor-not-allowed"
-                      : "text-darwin-text-secondary hover:text-darwin-text"
-                  )}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <span className="text-xs text-darwin-text-secondary font-data min-w-[60px] text-center">
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className={cn(
-                    "p-1 transition-colors",
-                    page >= totalPages
-                      ? "text-darwin-text-muted cursor-not-allowed"
-                      : "text-darwin-text-secondary hover:text-darwin-text"
-                  )}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            )}
           </div>
-
           <main className="px-6 pb-6">
             {marketsLoading ? (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -501,7 +368,6 @@ export default function MarketGrid() {
                       setSearchQuery("")
                       setSelectedCategory(null)
                       setSignalFilter("all")
-                      setPage(1)
                     }}
                     className="mt-2 text-xs text-darwin-blue hover:text-darwin-blue/80 transition-colors"
                   >
@@ -553,7 +419,7 @@ function StatItem({
   highlight,
 }: {
   label: string
-  value: string
+  value: number
   highlight?: boolean
 }) {
   return (

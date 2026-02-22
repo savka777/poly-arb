@@ -79,6 +79,17 @@ export function getSignals(filters?: {
   return rows.map(rowToSignal);
 }
 
+export function getSignalById(id: string): Signal | null {
+  const row = db
+    .select()
+    .from(schema.signals)
+    .where(eq(schema.signals.id, id))
+    .limit(1)
+    .all();
+
+  return row.length > 0 ? rowToSignal(row[0]) : null;
+}
+
 export function getSignalsByMarket(marketId: string): Signal[] {
   const rows = db
     .select()
