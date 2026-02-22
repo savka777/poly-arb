@@ -61,16 +61,16 @@ const CATEGORY_COLORS: Record<string, { primary: string; accent: string }> = {
 
 // Each galaxy disc tilted to a unique orientation — euler [x, y, z] in radians
 const CATEGORY_TILTS: Record<string, [number, number, number]> = {
-  politics:      [0.5,  0.0,   0.3],
-  crypto:        [-0.4, 0.8,  -0.2],
+  politics:      [0.9,  0.0,   0.3],
+  crypto:        [0.6,  0.8,  -0.2],
   sports:        [1.1,  -0.3,  0.4],
-  finance:       [-0.6, 0.3,   0.1],
+  finance:       [0.5,  0.3,   0.1],
   science:       [0.8,  0.4,  -0.5],
-  entertainment: [-0.3, -0.7,  0.4],
-  technology:    [0.1,  0.6,  -0.8],
-  world:         [-0.7, -0.2,  0.6],
-  culture:       [0.6,  -0.4, -0.3],
-  other:         [0.3,  0.2,   0.5],
+  entertainment: [0.7, -0.7,   0.4],
+  technology:    [0.8,  0.6,  -0.8],
+  world:         [0.5, -0.2,   0.6],
+  culture:       [0.9, -0.4,  -0.3],
+  other:         [0.7,  0.2,   0.5],
 }
 
 function normalizeCategory(cat: string | undefined): string {

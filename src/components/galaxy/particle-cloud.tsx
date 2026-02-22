@@ -54,7 +54,7 @@ function ParticleCloudLayer({ config, mousePos, flatten }: ParticleCloudLayerPro
 
     for (let i = 0; i < count; i++) {
       // Gaussian-weighted radial distribution — dense center, sparse edges
-      const g = Math.abs(gaussRandom(rng)) * 0.4 // 0-~1.5, concentrated near 0
+      const g = Math.abs(gaussRandom(rng)) * 0.5 // slightly wider spread from center
       const t = Math.min(g, 1.0) // clamp
       const r = minRadius + t * range
 
