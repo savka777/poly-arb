@@ -14,8 +14,8 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Darwin Capital",
-  description: "AI-powered prediction market alpha detection",
+  title: "Polyverse",
+  description: "See prediction markets in a new light — live sentiment, real-time volume, AI-powered signals",
 }
 
 export default function RootLayout({

@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import { Search, X, ArrowUpDown, TrendingUp, Flame, Clock } from "lucide-react"
 import { useMarkets } from "@/hooks/use-markets"
 import { useSignals } from "@/hooks/use-signals"
@@ -149,6 +150,13 @@ export default function MarketGrid() {
       <header className="border-b border-darwin-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
+            <Link
+              href="/"
+              className="text-xs text-darwin-text-muted transition-colors hover:text-darwin-text-secondary"
+            >
+              ← Home
+            </Link>
+            <span className="text-darwin-border select-none">|</span>
             <h1 className="text-lg font-semibold tracking-tight text-darwin-text">
               DARWIN CAPITAL
             </h1>

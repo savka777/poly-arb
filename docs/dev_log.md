@@ -6,6 +6,180 @@
 
 ---
 
+## [2026-02-22 14:00] Claude Sonnet 4.6
+
+### What Changed
+- **galaxy-canvas.tsx** — completely replaced GalaxyCanvas (market-clustered interactive stars) with `StarCanvas`: a lightweight cursor-reactive particle system styled as astronomical stars.
+  - 220 reactive particles: randomised positions, size 1–3px diameter, opacity 0.15–0.5 at rest
+  - Star rendering: sharp center circle + radial glow via `shadowBlur` 4–10px; 4-point diffraction spike (crossing lines, length 6–12px, opacity 0.3) on particles with diameter > 2px
+  - Cursor proximity (~150px): particles brighten toward full white and repel via inverse-distance falloff; ease back via lerp factor 0.08
+  - Connection lines between particles within 70px: `opacity = (1 - d/70) * 0.25`
+  - 300 additional non-interactive background particles (0.5px, 0.08–0.15 opacity) with parallax shift `mouseOffset × 0.015`
+  - Canvas now scoped to hero section only (not fixed full-page); `pointer-events-auto` so mouse tracking works through `pointer-events-none` parent
+  - 60fps RAF loop, ResizeObserver for window resize, DPR-aware via `setTransform`
+- **polyverse-logo.tsx** — new inline SVG component: central dot + 6 orbital dots (radius 8px, angles 0/60/120/180/240/300°) + "POLYVERSE" bold white wordmark. No external assets.
+- **page.tsx** — four targeted changes:
+  1. Replaced `GalaxyCanvas` (fixed full-page) with `StarCanvas` (inside hero section, absolute inset-0 z-0)
+  2. Removed stats bar section (Section A), `StatColumn` component, `LiveStats` interface, `FALLBACK_STATS`, `stats` state, `setStats` call
+  3. Replaced text-only POLYVERSE wordmark in navbar with `<PolyverseLogo />`
+  4. Updated all landing page copy: hero label, hero subheadline, all three feature column descriptions (col 3 title also changed), concept statement
+
+### Decisions Made
+- Kept comparison panes (left/right) and all market/signal state in page.tsx — spec said "do not touch anything else"; panes simply remain closed since canvas no longer has click-to-select
+- `StarCanvas` exported from same file path (`galaxy-canvas.tsx`) to minimise diff surface
+- Connection line opacity capped at 0.25 (formula × 0.25) to honour "faint" description in spec while following the given formula
+- `pointer-events-auto` on canvas container div overrides `pointer-events-none` on parent without restructuring flex layout
+
+### Now Unblocked
+- Hero canvas is pure decoration — can add market data back as overlaid data layer without touching the canvas
+- Logo SVG can be swapped for a more polished version before presentation
+
+### Known Issues
+- Comparison panes are unreachable (no canvas click-to-select) — intentional per Change 1 spec; would need a new selection mechanism (e.g. dashboard link) to re-activate
+- On window resize, particles re-initialise (jump) — acceptable for a demo context
+
+### Next Up
+- Demo flow polish: ensure grid → click market → see analysis flow still works via dashboard
+- Presentation prep
+
+---
+
+## [2026-02-22 12:00] Claude Sonnet 4.6
+
+### What Changed
+- **REBRAND (Part 0):** Renamed "Darwin Capital" → "Polyverse" on the landing page only (navbar, hero, footer, browser tab title). Internal app retains "Darwin Capital" branding.
+  - `src/app/layout.tsx` — updated `metadata.title` to `"Polyverse"` and updated `description`.
+  - `src/app/page.tsx` — all visible "Darwin Capital" text replaced with "Polyverse".
+- **GALAXY CANVAS (Part 1):** New component `src/components/galaxy-canvas.tsx` — full interactive canvas visualization replacing the old particle hero.
+  - 83 mock markets across 6 clusters (Politics, Economics, Sport, Technology, Science, Culture)
+  - Cluster layout as per spec, organically spaced at unit-square positions
+  - Stars positioned with seeded Gaussian spread around cluster centers for determinism and stability
+  - Volume → radius: logarithmic scale 2–14px
+  - Signal color: bullish (#00D47E), bearish (#FF4444), no-signal (white) with linear intensity interpolation based on age (< 10 min = 100%, fading to white after 6h)
+  - 300 static background stars with parallax (mouse offset × 0.02)
+  - Per-star slow pulse animation (randomised phase + speed, ±0.5px)
+  - 4-point diffraction spikes on stars with volume > $100k
+  - Radial glow (shadowBlur) on stars with active signals
+  - Entry/exit animations: 1.5s fade-in with glow burst, 2s fade-out
+  - Hover hit detection (radius + 8px), tooltip drawn on canvas with market question, category, probability, Darwin estimate, volume, signal label
+  - Click selects/deselects stars; up to 4 simultaneous; 5th click displaces oldest; empty-space click deselects all
+  - Beam lines from selected star to keyword-similar stars in same cluster
+  - Cluster labels (all-caps, 0.30 opacity) at cluster centers
+  - DevicePixelRatio-aware rendering for retina displays
+- **SIDE PANES (Part 2):**
+  - Left pane (38vw, slides from left): comparison charts using existing `LightweightChart` + `AlphaBar` + `SignalBadge`. Stacked for 1–2 markets, tabbed for 3–4.
+  - Right pane (28vw, slides from right): signal feed with live pulse dot, per-market tabs, signal entries (direction badge, confidence bar, news events), recent signals list.
+  - Both panes: 300ms ease-out CSS transition, `backdrop-filter: blur(8px)`, `pointer-events: auto`.
+  - Galaxy canvas container shifts `translateX(5vw)` when panes open to re-center star field in middle viewport area (38vw - 28vw)/2 = 5vw offset.
+- **HERO OVERLAY (Part 3):** "POWERED BY AI · BUILT FOR POLYMARKET" label, headline "See Prediction Markets in a New Light.", subheadline, "Explore the Universe" CTA. Radial gradient mask behind text block. Overlay fades on scroll > 80px. Animated scroll chevron disappears on scroll.
+- **BELOW-FOLD SECTIONS (Part 4):** Stats bar, three feature columns, concept statement, footer — all with solid dark backgrounds (cover fixed galaxy canvas). Live stats polled from `/api/markets` and `/api/signals`, fallback to static values.
+- **NAVBAR (Part 5):** Fixed, transparent with `backdrop-filter: blur(12px)`, "POLYVERSE" wordmark left, "Enter Dashboard →" CTA right.
+- **Architecture:**
+  - Galaxy canvas is `position: fixed; z-index: 0` — always in background.
+  - Hero section is transparent 100vh — canvas shows through.
+  - Below-fold sections have solid backgrounds (`z-index: 10`) and cover the galaxy on scroll.
+  - Side panes are `position: fixed; z-index: 10`.
+  - All events use `getBoundingClientRect()` for accurate hit detection through CSS transforms.
+
+### Decisions Made
+- Galaxy uses CSS `translateX` for reflow on pane open, not star coordinate recomputation — smooth animation without per-frame recalculation.
+- Star positions use seeded RNG on `market.id` for determinism across re-renders and data refreshes.
+- `generateMockTimeSeries` reused directly (returns `ProbabilityPoint[]`), timestamps converted to `UTCTimestamp` inline.
+- Mock fallback data (83 markets, 6 signals) embedded in `page.tsx` so visualization is never empty.
+- Cluster keyword matching is category-first, then question-string keywords, then deterministic hash fallback — no third-party NLP needed.
+- Right pane signal feed and left pane charts share a single `activeSignalTab` state for coherent tab sync.
+- `AnalysisFeed` component not imported in landing page (not needed — custom `SignalFeedEntry` component is simpler and fits the pane layout).
+
+### Now Unblocked
+- Full hero demo flow: galaxy → click star → panes open → view charts + signal feed → click "Open full comparison view →" → compare page.
+- On mobile (<768px): panes hidden via CSS media query, galaxy still renders with click-to-deselect.
+
+### Known Issues
+- Mobile: tooltip on tap not implemented (bottom sheet as per spec). Deferred — panes hidden on mobile so click just deselects.
+- "Explore the Universe" CTA scrolls to below-fold anchor (`#below-fold`). If the galaxy has stars in the bottom viewport area, click targets near the CTA button may be ambiguous. Acceptable for hackathon demo.
+- Left pane "Comparison" header shows slot count only; no per-pane Darwin vs Market ratio summary. Could be added as enhancement.
+
+### Next Up
+- Polish: add smooth entry animation for below-fold sections (intersection observer fade-in).
+- Polish: mobile bottom sheet tooltip on star tap.
+- Perf: pause RAF loop when scrollY > window.innerHeight (below-fold sections covering canvas).
+- Dashboard: verify "← Back to Home" link still points to `/` — no changes made there.
+
+---
+
+## [2026-02-21 01:00] Claude Sonnet 4.6
+
+### What Changed
+- `src/app/page.tsx` — three targeted changes:
+  1. **Preview section**: Replaced 3-slide carousel with a single macOS-style framed application window containing an interactive iframe pointing to `/compare?demo=true`. Window chrome: 12px border-radius, traffic light dots (red/yellow/green), centered title bar, `box-shadow: 0 0 60px rgba(255,255,255,0.06)`, mild `perspective(1200px) rotateX(2.5deg)` depth transform. Iframe is fully interactive (`pointer-events: all`), 540px tall. Graceful fallback renders a muted message if the iframe fails to load.
+  2. **Hero background**: Added two CSS gradient layers behind the canvas — a green accent radial gradient at 20%/80% (0.15 opacity) and a dark radial gradient centered at 65%/40%. Section background is now pure black (#000) with layered z-index: gradients (z:0) → canvas (z:1) → content (z:10). Increased particles from 120 → 220, reduced opacity floor to 0.15, reduced connection radius from 80 → 70px.
+  3. **Copy**: Updated hero subheadline, stats bar labels (3 labels), and concept statement (2 paragraphs) to sharper, more specific copy.
+- `src/app/compare/page.tsx` — added demo mode support:
+  - `DEMO_MARKETS` and `DEMO_SIGNALS` constants with hardcoded Italy/Sweden FIFA World Cup 2026 data (realistic divergences: Italy 63.5% market / 61.1% Darwin, Sweden 27.5% market / 29.8% Darwin)
+  - `const isDemo = searchParams.get("demo") === "true"`
+  - `signalMap` useMemo branch for demo data
+  - `allMarkets` overridden to `DEMO_MARKETS` when isDemo
+  - `slots` state initialized with two demo panels when isDemo (avoids empty-state loading)
+  - `useEffect` auto-selects panel 0 and opens analysis sidebar in demo mode
+  - "Back to Grid" link hidden when isDemo
+  - `marketsLoading` spinner skipped when isDemo
+
+### Decisions Made
+- Used iframe with `pointer-events: all` (not scale-down preview) per spec — the demo window is the full app, interactive.
+- Demo market slots initialized in `useState` initializer (not a useEffect) to avoid one render with empty state + flash.
+- `Signal` type imported into compare/page.tsx was already there — no type changes needed.
+- Removed `useCallback` import from page.tsx (no longer needed after carousel removal).
+- Gradient layers use inline `zIndex` style rather than Tailwind `z-*` classes to avoid arbitrary value requirements.
+
+### Now Unblocked
+- Full demo flow: landing → window shows live Compare view → user can interact with charts
+- Stats bar fetches live data and degrades gracefully to static fallback
+
+### Known Issues
+- `rotateX(2.5deg)` perspective transform may cause minor sub-pixel rendering artefacts on some GPUs — acceptable for demo
+- Demo iframe will still make API calls in background (signals/markets routes); data is overridden in the view but queries run
+- `onError` on the iframe only catches network-level failures, not React render errors inside the iframe
+
+### Next Up
+- Run end-to-end demo flow validation
+- Sprint 3 gate check: grid → click market → analysis → trigger new analysis
+
+---
+
+## [2026-02-21 00:00] Claude Sonnet 4.6
+
+### What Changed
+- `src/app/page.tsx` — complete rewrite: 5-section landing page replacing the single-screen hero
+  - Section 1: Hero with floating particle canvas (120 particles, connection lines ≤80px, cursor repel ≤150px). Canvas is `overflow-hidden` inside the hero `<section>`, strictly preventing bleed into sections below. RadialGradient overlay for text legibility.
+  - Section 2: Live stats bar (`bg-darwin-card`, solid). Fetches `/api/markets` + `/api/signals` and falls back to static values (847 / 12 / 3).
+  - Section 3: App preview carousel — 3 iframe slides (`/dashboard`, `/compare`, `/dashboard`) scaled to 70% via `transform: scale(0.7)`, non-interactive. Auto-advances every 6 s, pauses on hover. Prev/next arrows + dot indicators.
+  - Section 4: Concept statement — centered copy, max-width 680px, no decorations.
+  - Section 5: Minimal footer with `Enter App →` link.
+- `src/app/dashboard/page.tsx` — added `← Home` Link to `/` at top-left of the header nav, import `Link` from `next/link`
+
+### Decisions Made
+- Landing page is `/` (default route) and dashboard stays at `/dashboard` — no route changes needed.
+- Canvas scoped to hero `<section>` via `hero.offsetWidth/Height` sizing and `overflow-hidden` clipping; mouse events handled on the hero element (not `window`) so coordinates are naturally relative.
+- All sections below hero use `bg-darwin-card` or `bg-darwin-bg` explicit opaque backgrounds.
+- CTA buttons use `bg-darwin-text text-darwin-bg` (near-white fill, dark text) for solid high-contrast appearance, no ghost styles.
+- Used `darwin-*` prefixed Tailwind classes throughout to match `@theme inline` definitions in `globals.css`.
+- Non-null canvas/ctx/hero captured into `cvs`/`c`/`heroEl` consts before inner function definitions to satisfy `strict: true` TypeScript narrowing.
+
+### Now Unblocked
+- Demo flow: landing → Launch Dashboard → market grid → click market → analysis
+- Can add a `/markets/[id]` carousel slide once a known seed market ID is available
+
+### Known Issues
+- Carousel slide 3 (`/dashboard`) is a duplicate of slide 1 — pending a real query-interface route or separate page
+- `scrolling="no"` on `<iframe>` is deprecated HTML4 but still works; acceptable for demo
+
+### Next Up
+- Polish: add `/markets/[example-id]` as slide 2 using a seeded market ID
+- Verify carousel iframe loads on all browsers (Chrome, Firefox, Safari)
+- Sprint 3 gate: full demo flow end-to-end check
+
+---
+
 ## Entry Template
 
 ```

@@ -54,8 +54,80 @@ type ModalMode =
   | { type: "swap"; panelIndex: number }
   | null
 
+// ---------------------------------------------------------------------------
+// Demo mode data — used when ?demo=true is present in the URL
+// ---------------------------------------------------------------------------
+
+const DEMO_MARKETS: Market[] = [
+  {
+    id: "demo-italy-wc2026",
+    platform: "polymarket",
+    question: "Will Italy qualify for the 2026 FIFA World Cup?",
+    probability: 0.635,
+    volume: 1_240_000,
+    liquidity: 320_000,
+    endDate: "2025-11-18",
+    url: "https://polymarket.com",
+    category: "Sports",
+    lastUpdated: new Date().toISOString(),
+  },
+  {
+    id: "demo-sweden-wc2026",
+    platform: "polymarket",
+    question: "Will Sweden qualify for the 2026 FIFA World Cup?",
+    probability: 0.275,
+    volume: 680_000,
+    liquidity: 180_000,
+    endDate: "2025-11-18",
+    url: "https://polymarket.com",
+    category: "Sports",
+    lastUpdated: new Date().toISOString(),
+  },
+]
+
+const DEMO_SIGNALS: Signal[] = [
+  {
+    id: "demo-signal-italy",
+    marketId: "demo-italy-wc2026",
+    marketQuestion: "Will Italy qualify for the 2026 FIFA World Cup?",
+    darwinEstimate: 0.611,
+    marketPrice: 0.635,
+    ev: -0.024,
+    direction: "no",
+    reasoning:
+      "Despite Italy's strong Nations League campaign, recent qualifying draw analysis and opponent strength metrics suggest the market has modestly overpriced their probability. Key fixtures against top UEFA seeds remain.",
+    newsEvents: [
+      "Italy draws Spain in UEFA Nations League semifinal",
+      "2026 World Cup European qualifying draw announced",
+    ],
+    confidence: "medium",
+    createdAt: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "demo-signal-sweden",
+    marketId: "demo-sweden-wc2026",
+    marketQuestion: "Will Sweden qualify for the 2026 FIFA World Cup?",
+    darwinEstimate: 0.298,
+    marketPrice: 0.275,
+    ev: 0.023,
+    direction: "yes",
+    reasoning:
+      "Sweden's group path appears more favourable than the market implies. Improved form under new management and a historically strong home record suggest market is underpricing their qualifying probability.",
+    newsEvents: [
+      "Sweden beats Norway 2-0 in Nordic Cup",
+      "Alexander Isak returns from injury ahead of qualifiers",
+    ],
+    confidence: "medium",
+    createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  },
+]
+
 export default function ComparePage() {
   const searchParams = useSearchParams()
+  const isDemo = searchParams.get("demo") === "true"
+
   const { data: marketsData, isLoading: marketsLoading } = useMarkets()
   const { data: signalsData } = useSignals()
   const analysis = useAnalysis()
@@ -66,6 +138,13 @@ export default function ComparePage() {
   const [feedEntries, setFeedEntries] = useState<Map<string, FeedEntry[]>>(new Map())
 
   const signalMap = useMemo(() => {
+    if (isDemo) {
+      const map = new Map<string, Signal>()
+      for (const s of DEMO_SIGNALS) {
+        map.set(s.marketId, s)
+      }
+      return map
+    }
     const map = new Map<string, Signal>()
     if (signalsData?.signals) {
       for (const s of signalsData.signals) {
@@ -73,9 +152,9 @@ export default function ComparePage() {
       }
     }
     return map
-  }, [signalsData])
+  }, [isDemo, signalsData])
 
-  const allMarkets = marketsData?.markets ?? []
+  const allMarkets = isDemo ? DEMO_MARKETS : (marketsData?.markets ?? [])
 
   const marketById = useMemo(() => {
     const map = new Map<string, Market>()
@@ -86,7 +165,14 @@ export default function ComparePage() {
   }, [allMarkets])
 
   // Positional slots: each index is a grid cell
-  const [slots, setSlots] = useState<(PanelSlot | null)[]>([])
+  const [slots, setSlots] = useState<(PanelSlot | null)[]>(
+    isDemo
+      ? [
+          { primaryId: DEMO_MARKETS[0].id, overlayIds: [] },
+          { primaryId: DEMO_MARKETS[1].id, overlayIds: [] },
+        ]
+      : []
+  )
 
   // Handle ?add=marketId from URL on first load
   const addParam = searchParams.get("add")
@@ -113,6 +199,14 @@ export default function ComparePage() {
       })
     }
   }, [addParam, initialAddHandled, allMarkets, signalMap])
+
+  // Demo mode: auto-select first panel and open analysis sidebar on mount
+  useEffect(() => {
+    if (!isDemo) return
+    setSelectedPanelIndex(0)
+    setShowAnalysis(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemo])
 
   const filledCount = useMemo(() => slots.filter((s) => s !== null).length, [slots])
   const totalSlots = useMemo(() => gridSlotsFor(filledCount), [filledCount])
@@ -470,13 +564,15 @@ export default function ComparePage() {
               Analysis
             </button>
           )}
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-1.5 text-xs text-darwin-text-secondary transition-colors hover:text-darwin-text"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Grid
-          </Link>
+          {!isDemo && (
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-1.5 text-xs text-darwin-text-secondary transition-colors hover:text-darwin-text"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Grid
+            </Link>
+          )}
         </div>
       </header>
 
@@ -484,7 +580,7 @@ export default function ComparePage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Chart panels */}
         <div className="flex-1 min-w-0">
-          {marketsLoading ? (
+          {marketsLoading && !isDemo ? (
             <div className="flex h-full items-center justify-center">
               <span className="text-xs text-darwin-text-muted animate-pulse">
                 Loading markets...

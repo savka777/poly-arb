@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(cd:*)",
+      "Bash(head:*)",
+      "Bash(echo EXIT: $?:*)",
+      "Bash(cd /c/Users/maksh/Desktop/poly-arb && npx tsc --noEmit 2>&1)",
+      "Bash(echo EXIT:$?:*)",
+      "Bash(echo exit:$?:*)"
+    ]
+  }
+}
