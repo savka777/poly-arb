@@ -619,16 +619,6 @@ export function GalaxyScene() {
               Galaxy
             </button>
           )}
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight text-[#ccd0e0]">
-              POLYVERSE
-            </h1>
-            {focusedConstellation && (
-              <span className="text-xs uppercase tracking-wider text-[#8899aa]">
-                {focusedConstellation}
-              </span>
-            )}
-          </div>
           {/* Search button */}
           <button
             onClick={() => setSearchOpen(true)}

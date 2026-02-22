@@ -7,6 +7,17 @@ const CX = 14
 const CY = 14
 const ORBIT_ANGLES = [0, 60, 120, 180, 240, 300] // degrees
 
+// Precompute orbital positions to avoid hydration mismatch from
+// floating-point differences between server and client Math.cos/sin
+const ORBITAL_DOTS = ORBIT_ANGLES.map((deg) => {
+  const rad = (deg * Math.PI) / 180
+  return {
+    deg,
+    cx: Math.round((CX + ORBIT_R * Math.cos(rad)) * 1000) / 1000,
+    cy: Math.round((CY + ORBIT_R * Math.sin(rad)) * 1000) / 1000,
+  }
+})
+
 export function PolyverseLogo() {
   return (
     <div className="flex items-center" style={{ gap: 10 }}>
@@ -21,12 +32,9 @@ export function PolyverseLogo() {
         {/* Central dot — slightly larger */}
         <circle cx={CX} cy={CY} r={3} fill="white" />
         {/* Orbital dots */}
-        {ORBIT_ANGLES.map((deg) => {
-          const rad = (deg * Math.PI) / 180
-          const ox = CX + ORBIT_R * Math.cos(rad)
-          const oy = CY + ORBIT_R * Math.sin(rad)
-          return <circle key={deg} cx={ox} cy={oy} r={1.8} fill="white" />
-        })}
+        {ORBITAL_DOTS.map((dot) => (
+          <circle key={dot.deg} cx={dot.cx} cy={dot.cy} r={1.8} fill="white" />
+        ))}
       </svg>
       <span
         className="text-base font-bold text-white"
