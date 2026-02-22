@@ -16,6 +16,7 @@ export const vertexShader = /* glsl */ `
   uniform vec3 uMouse;
   uniform float uMouseRadius;
   uniform float uSphereRadius;
+  uniform float uFlatten;      // 0 = normal, 1 = squash Y into disc
   varying vec2 vUv;
   varying float vAlpha;
 
@@ -122,9 +123,12 @@ export const vertexShader = /* glsl */ `
       fbm(twisted * 0.1 + 100.0 + uTime * 0.004),
       fbm(twisted * 0.1 + 200.0 + uTime * 0.006)
     );
-    vec3 finalPos = twisted + offset * 1.5;
+    vec3 finalPos = twisted + offset * 2.0;
 
-    // E. Mouse sphere attractor
+    // E. Flatten into disc — squash Y toward 0
+    finalPos.y *= mix(1.0, 0.03, uFlatten);
+
+    // F. Mouse sphere attractor
     float mouseDist = length(finalPos.xz - uMouse.xz);
     float influence = 1.0 - clamp(mouseDist / uMouseRadius, 0.0, 1.0);
     influence *= influence;

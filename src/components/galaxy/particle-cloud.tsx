@@ -14,18 +14,23 @@ export interface CloudLayerConfig {
   color: string
   opacity: number
   twistAmp: number
-  ySpread: number  // thin vertical spread — keeps it disc-shaped
+  ySpread: number
 }
 
 interface ParticleCloudLayerProps {
   config: CloudLayerConfig
   mousePos: THREE.Vector3
+  flatten: boolean
 }
 
-const NUM_ARMS = 3
-const ARM_SPREAD = 0.4 // how wide each arm fans out
+// Box-Muller transform for gaussian random
+function gaussRandom(rng: () => number): number {
+  const u1 = rng()
+  const u2 = rng()
+  return Math.sqrt(-2 * Math.log(u1 + 0.0001)) * Math.cos(2 * Math.PI * u2)
+}
 
-function ParticleCloudLayer({ config, mousePos }: ParticleCloudLayerProps) {
+function ParticleCloudLayer({ config, mousePos, flatten }: ParticleCloudLayerProps) {
   const meshRef = useRef<THREE.Mesh>(null)
   const materialRef = useRef<THREE.ShaderMaterial>(null)
 
@@ -44,26 +49,40 @@ function ParticleCloudLayer({ config, mousePos }: ParticleCloudLayerProps) {
     const phases = new Float32Array(count)
     const arms = new Float32Array(count)
 
+    const range = maxRadius - minRadius
+    const rng = () => Math.random()
+
     for (let i = 0; i < count; i++) {
-      // Pick a spiral arm
-      const armIndex = i % NUM_ARMS
-      const armAngle = (armIndex / NUM_ARMS) * Math.PI * 2
+      // Gaussian-weighted radial distribution — dense center, sparse edges
+      const g = Math.abs(gaussRandom(rng)) * 0.4 // 0-~1.5, concentrated near 0
+      const t = Math.min(g, 1.0) // clamp
+      const r = minRadius + t * range
 
-      // Distance from center
-      const t = Math.random()
-      const r = minRadius + t * (maxRadius - minRadius)
+      // Uniform angle
+      const angle = rng() * Math.PI * 2
 
-      // Spiral: angle increases with radius (logarithmic spiral)
-      const spiralAngle = armAngle + t * 2.5 + (Math.random() - 0.5) * ARM_SPREAD * (1.0 + t)
+      // Spherical-ish Y: gaussian spread, thinner than XZ
+      const yGauss = gaussRandom(rng) * ySpread * (1.0 - t * 0.3) * 0.3
 
-      positions[i * 3 + 0] = r * Math.cos(spiralAngle)
-      positions[i * 3 + 1] = (Math.random() - 0.5) * ySpread
-      positions[i * 3 + 2] = r * Math.sin(spiralAngle)
+      positions[i * 3 + 0] = r * Math.cos(angle)
+      positions[i * 3 + 1] = yGauss
+      positions[i * 3 + 2] = r * Math.sin(angle)
 
-      // Bigger near center, smaller at edges
-      sizes[i] = 0.3 + Math.random() * 0.7 * (1.0 - t * 0.4)
-      phases[i] = Math.random() * Math.PI * 2
-      arms[i] = armIndex / NUM_ARMS
+      // Size distribution: mostly small, few bright large ones (power law)
+      const sizeRoll = rng()
+      if (sizeRoll < 0.02) {
+        sizes[i] = 1.5 + rng() * 1.5 // rare bright stars
+      } else if (sizeRoll < 0.15) {
+        sizes[i] = 0.6 + rng() * 0.9 // medium stars
+      } else {
+        sizes[i] = 0.15 + rng() * 0.45 // majority small
+      }
+
+      // Bigger stars closer to center
+      sizes[i] *= (1.0 + (1.0 - t) * 0.5)
+
+      phases[i] = rng() * Math.PI * 2
+      arms[i] = 0 // no spiral arms for cluster look
     }
 
     geo.setAttribute("aPos", new THREE.InstancedBufferAttribute(positions, 3))
@@ -83,6 +102,7 @@ function ParticleCloudLayer({ config, mousePos }: ParticleCloudLayerProps) {
       uMouse: { value: new THREE.Vector3(9999, 9999, 9999) },
       uMouseRadius: { value: 5.0 },
       uSphereRadius: { value: 2.5 },
+      uFlatten: { value: 0.0 },
     }
 
     return { geometry: geo, uniforms: u }
@@ -102,6 +122,10 @@ function ParticleCloudLayer({ config, mousePos }: ParticleCloudLayerProps) {
     if (!materialRef.current) return
     materialRef.current.uniforms.uTime.value = state.clock.elapsedTime
     materialRef.current.uniforms.uMouse.value.copy(mousePos)
+    // Smoothly animate flatten
+    const target = flatten ? 1.0 : 0.0
+    const current = materialRef.current.uniforms.uFlatten.value
+    materialRef.current.uniforms.uFlatten.value += (target - current) * 0.12
   })
 
   return (
@@ -126,32 +150,38 @@ export interface ParticleCloudProps {
   center: [number, number, number]
   tilt: [number, number, number]
   mousePos: THREE.Vector3
-  flatten: boolean  // true = zoomed in, rotate to horizontal
+  flatten: boolean
 }
 
 export function ParticleCloud({ layers, center, tilt, mousePos, flatten }: ParticleCloudProps) {
   const groupRef = useRef<THREE.Group>(null)
 
-  // Target rotation: nebula tilt when galaxy view, flat horizontal when zoomed in
-  const targetEuler = useMemo(() => {
-    if (flatten) return new THREE.Euler(0, 0, 0)
-    return new THREE.Euler(tilt[0], tilt[1], tilt[2])
+  const targetQuat = useMemo(() => {
+    const euler = flatten ? new THREE.Euler(0, 0, 0) : new THREE.Euler(tilt[0], tilt[1], tilt[2])
+    return new THREE.Quaternion().setFromEuler(euler)
   }, [flatten, tilt])
-
-  const targetQuat = useMemo(() => new THREE.Quaternion().setFromEuler(targetEuler), [targetEuler])
 
   useFrame(() => {
     if (!groupRef.current) return
-    groupRef.current.quaternion.slerp(targetQuat, 0.03)
+    groupRef.current.quaternion.slerp(targetQuat, 0.08)
   })
 
+  // Set initial rotation via quaternion (not euler prop, which fights slerp)
+  useEffect(() => {
+    if (!groupRef.current) return
+    const euler = new THREE.Euler(tilt[0], tilt[1], tilt[2])
+    groupRef.current.quaternion.setFromEuler(euler)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
-    <group position={center} ref={groupRef} rotation={tilt}>
+    <group position={center} ref={groupRef}>
       {layers.map((layer, i) => (
         <ParticleCloudLayer
           key={i}
           config={layer}
           mousePos={mousePos}
+          flatten={flatten}
         />
       ))}
     </group>

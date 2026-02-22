@@ -33,14 +33,14 @@ export interface GalaxyData {
 }
 
 const CATEGORY_POSITIONS: Record<string, [number, number, number]> = {
-  politics: [-35, 5, -25],
+  politics: [-38, 5, -25],
   crypto: [30, -8, -20],
-  sports: [12, 22, 30],
-  finance: [-25, -18, 12],
+  sports: [12, 8, 30],
+  finance: [-35, -18, 12],
   science: [35, 18, 12],
   entertainment: [-12, -22, -35],
   technology: [22, 28, -12],
-  world: [-28, 8, 22],
+  world: [-38, 8, 22],
   culture: [8, -28, 18],
   other: [0, 35, 0],
 }
@@ -63,7 +63,7 @@ const CATEGORY_COLORS: Record<string, { primary: string; accent: string }> = {
 const CATEGORY_TILTS: Record<string, [number, number, number]> = {
   politics:      [0.5,  0.0,   0.3],
   crypto:        [-0.4, 0.8,  -0.2],
-  sports:        [0.2,  -0.5,  0.7],
+  sports:        [1.1,  -0.3,  0.4],
   finance:       [-0.6, 0.3,   0.1],
   science:       [0.8,  0.4,  -0.5],
   entertainment: [-0.3, -0.7,  0.4],
@@ -129,68 +129,79 @@ function buildCloudLayers(
   accent: string,
 ): CloudLayerConfig[] {
   // Scale particle count with market count — more markets = denser cloud
-  const density = Math.min(marketCount * 150, 5000)
+  const density = Math.min(marketCount * 350, 10000)
   const signalIntensity = signalCount > 0 ? Math.min(avgEv * 10, 1) : 0
-  const baseRadius = 5 + marketCount * 0.25
+  const baseRadius = 8 + marketCount * 0.35
 
   const layers: CloudLayerConfig[] = [
-    // Layer 1: Main spiral body — thick nebula cloud
+    // Layer 1: Primary stars — dense core, gaussian falloff
     {
-      count: density,
-      minRadius: baseRadius * 0.1,
+      count: Math.floor(density * 1.5),
+      minRadius: 0,
       maxRadius: baseRadius,
-      baseSize: 0.45 + signalIntensity * 0.15,
+      baseSize: 0.35 + signalIntensity * 0.1,
       color: primary,
-      opacity: 0.55 + signalIntensity * 0.3,
-      twistAmp: 0.3 + signalIntensity * 0.2,
-      ySpread: 2.5,
+      opacity: 0.7 + signalIntensity * 0.2,
+      twistAmp: 0.15,
+      ySpread: baseRadius * 0.7,
     },
-    // Layer 2: Accent cloud — big puffy nebula
+    // Layer 2: Warm gold/orange stars — gives that Hubble warmth
+    {
+      count: Math.floor(density * 0.8),
+      minRadius: 0,
+      maxRadius: baseRadius * 1.1,
+      baseSize: 0.3,
+      color: "#ffcc66",
+      opacity: 0.5 + signalIntensity * 0.15,
+      twistAmp: 0.12,
+      ySpread: baseRadius * 0.75,
+    },
+    // Layer 3: Accent color stars — sparser, adds color variety
     {
       count: Math.floor(density * 0.5),
-      minRadius: baseRadius * 0.2,
-      maxRadius: baseRadius * 1.15,
-      baseSize: 0.3,
+      minRadius: 0,
+      maxRadius: baseRadius * 1.2,
+      baseSize: 0.4,
       color: accent,
-      opacity: 0.35 + signalIntensity * 0.2,
-      twistAmp: 0.5 + signalIntensity * 0.3,
-      ySpread: 3.5,
+      opacity: 0.4 + signalIntensity * 0.2,
+      twistAmp: 0.2,
+      ySpread: baseRadius * 0.8,
     },
-    // Layer 3: Nebula haze — huge faint particles billowing out
+    // Layer 4: Hot white/blue core stars — bright center
     {
       count: Math.floor(density * 0.4),
-      minRadius: baseRadius * 0.1,
-      maxRadius: baseRadius * 1.5,
-      baseSize: 1.2,
-      color: primary,
-      opacity: 0.07,
+      minRadius: 0,
+      maxRadius: baseRadius * 0.5,
+      baseSize: 0.4,
+      color: "#ccddff",
+      opacity: 0.6,
       twistAmp: 0.1,
-      ySpread: 5.0,
+      ySpread: baseRadius * 0.5,
     },
-    // Layer 4: Deep nebula gas — very large, very faint, maximum volume
+    // Layer 5: Faint outer halo — scattered distant stars
     {
-      count: Math.floor(density * 0.2),
-      minRadius: baseRadius * 0.0,
-      maxRadius: baseRadius * 1.3,
-      baseSize: 2.2,
-      color: accent,
-      opacity: 0.035,
+      count: Math.floor(density * 0.3),
+      minRadius: baseRadius * 0.5,
+      maxRadius: baseRadius * 1.8,
+      baseSize: 0.2,
+      color: primary,
+      opacity: 0.2,
       twistAmp: 0.05,
-      ySpread: 7.0,
+      ySpread: baseRadius * 1.0,
     },
   ]
 
-  // Layer 5: Bright galactic core if strong signals
+  // Layer 6: Signal flare — extra bright core burst
   if (signalIntensity > 0.3) {
     layers.push({
-      count: Math.floor(density * 0.25),
-      minRadius: baseRadius * 0.0,
-      maxRadius: baseRadius * 0.4,
-      baseSize: 0.5,
+      count: Math.floor(density * 0.3),
+      minRadius: 0,
+      maxRadius: baseRadius * 0.35,
+      baseSize: 0.45,
       color: "#ffffff",
-      opacity: 0.25 + signalIntensity * 0.4,
-      twistAmp: 0.2,
-      ySpread: 1.0,
+      opacity: 0.3 + signalIntensity * 0.4,
+      twistAmp: 0.08,
+      ySpread: baseRadius * 0.3,
     })
   }
 
@@ -258,7 +269,7 @@ export function useGalaxyData(): GalaxyData {
     for (const [name, catMarkets] of groups) {
       const center = CATEGORY_POSITIONS[name] ?? [0, 0, 0]
       const colors = CATEGORY_COLORS[name] ?? CATEGORY_COLORS.other
-      const clusterRadius = Math.min(4 + catMarkets.length * 0.3, 12)
+      const clusterRadius = Math.min(6 + catMarkets.length * 0.5, 18)
       const catSeed = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) * 31
 
       const stars: StarData[] = catMarkets.map((market, i) => {

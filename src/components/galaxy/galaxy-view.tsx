@@ -37,6 +37,21 @@ export function GalaxyView({
               flatten={focused}
             />
 
+            {/* Clickable hit area */}
+            <mesh
+              position={c.position}
+              onClick={(e) => {
+                e.stopPropagation()
+                onConstellationClick(c)
+              }}
+              onPointerOver={() => { document.body.style.cursor = "pointer" }}
+              onPointerOut={() => { document.body.style.cursor = "auto" }}
+              visible={false}
+            >
+              <sphereGeometry args={[8, 8, 8]} />
+              <meshBasicMaterial />
+            </mesh>
+
             {/* Label */}
             <Billboard
               position={[
@@ -58,20 +73,28 @@ export function GalaxyView({
                 onPointerOut={() => { document.body.style.cursor = "auto" }}
               >
                 <Text
-                  fontSize={1.0}
-                  color={dimmed ? "#334455" : c.primaryColor}
+                  fontSize={1.4}
+                  color={dimmed ? "#445566" : "#ffffff"}
                   anchorX="center"
                   anchorY="bottom"
                   letterSpacing={0.12}
+                  outlineWidth={0.15}
+                  outlineBlur={0.4}
+                  outlineColor="#000000"
+                  outlineOpacity={0.8}
                 >
                   {c.name.toUpperCase()}
                 </Text>
                 <Text
-                  fontSize={0.5}
-                  color={dimmed ? "#223344" : "#667799"}
+                  fontSize={0.65}
+                  color={dimmed ? "#334455" : "#99aabb"}
                   anchorX="center"
                   anchorY="top"
-                  position={[0, -0.25, 0]}
+                  position={[0, -0.3, 0]}
+                  outlineWidth={0.1}
+                  outlineBlur={0.3}
+                  outlineColor="#000000"
+                  outlineOpacity={0.7}
                 >
                   {`${c.stars.length} markets${c.signalCount > 0 ? ` · ${c.signalCount} signals` : ""}`}
                 </Text>

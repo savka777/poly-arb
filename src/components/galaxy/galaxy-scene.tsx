@@ -29,7 +29,7 @@ function MouseTracker({ mousePos }: { mousePos: React.MutableRefObject<THREE.Vec
   })
 
   return (
-    <mesh ref={planeRef} visible={false} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+    <mesh ref={planeRef} visible={false} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} raycast={() => {}}>
       <planeGeometry args={[200, 200]} />
       <meshBasicMaterial />
     </mesh>

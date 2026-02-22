@@ -23,6 +23,7 @@ export function CameraController({ mode, target }: CameraControllerProps) {
 
   const targetPos = useRef(GALAXY_POS.clone())
   const targetLook = useRef(GALAXY_TARGET.clone())
+  const isAnimating = useRef(false)
 
   useEffect(() => {
     if (mode === "galaxy") {
@@ -32,9 +33,12 @@ export function CameraController({ mode, target }: CameraControllerProps) {
       targetPos.current.set(target[0] + 8, target[1] + 6, target[2] + 18)
       targetLook.current.set(target[0], target[1], target[2])
     }
+    isAnimating.current = true
   }, [mode, target])
 
   useFrame((_, delta) => {
+    if (!isAnimating.current) return
+
     const t = Math.min(delta * LERP_SPEED, 1)
 
     camera.position.lerp(targetPos.current, t)
@@ -42,6 +46,12 @@ export function CameraController({ mode, target }: CameraControllerProps) {
     if (controlsRef.current) {
       controlsRef.current.target.lerp(targetLook.current, t)
       controlsRef.current.update()
+    }
+
+    // Stop animating once we're close enough — let user take over
+    const posDist = camera.position.distanceTo(targetPos.current)
+    if (posDist < 0.1) {
+      isAnimating.current = false
     }
   })
 
@@ -51,10 +61,11 @@ export function CameraController({ mode, target }: CameraControllerProps) {
       enableDamping
       dampingFactor={0.1}
       minDistance={5}
-      maxDistance={150}
-      enablePan={mode === "galaxy"}
+      maxDistance={120}
+      enablePan
+      panSpeed={0.8}
       rotateSpeed={0.5}
-      zoomSpeed={0.8}
+      zoomSpeed={1.0}
     />
   )
 }
