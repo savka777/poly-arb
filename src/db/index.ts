@@ -46,6 +46,11 @@ export function getDb(): BetterSQLite3Database<typeof schema> {
         market_id TEXT PRIMARY KEY,
         added_at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS seen_articles (
+        key TEXT PRIMARY KEY,
+        source TEXT NOT NULL CHECK(source IN ('rss', 'news')),
+        created_at TEXT NOT NULL
+      );
     `);
 
     // Migrate: add new columns (safe to re-run — we catch duplicate column errors)
@@ -64,6 +69,12 @@ export function getDb(): BetterSQLite3Database<typeof schema> {
       `ALTER TABLE markets ADD COLUMN tags TEXT`,
       `ALTER TABLE markets ADD COLUMN one_day_price_change REAL`,
       `ALTER TABLE markets ADD COLUMN synced_at TEXT`,
+      // Solana on-chain commitment columns
+      `ALTER TABLE signals ADD COLUMN commit_tx_signature TEXT`,
+      `ALTER TABLE signals ADD COLUMN commit_hash TEXT`,
+      `ALTER TABLE signals ADD COLUMN reveal_tx_signature TEXT`,
+      `ALTER TABLE signals ADD COLUMN commit_slot INTEGER`,
+      `ALTER TABLE signals ADD COLUMN market_price_at_commit REAL`,
     ];
     for (const sql of migrations) {
       try {

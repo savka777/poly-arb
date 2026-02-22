@@ -1,5 +1,5 @@
 import { db, schema } from '@/db';
-import { eq, desc, gte, lt, count, and } from 'drizzle-orm';
+import { eq, desc, gte, lt, count, and, isNull, isNotNull } from 'drizzle-orm';
 import type { Signal, CostBreakdown } from '@/lib/types';
 
 function rowToSignal(row: typeof schema.signals.$inferSelect): Signal {
@@ -23,6 +23,11 @@ function rowToSignal(row: typeof schema.signals.$inferSelect): Signal {
   if (row.features) signal.features = JSON.parse(row.features) as { zNews: number; zTime: number };
   if (row.tradeable != null) signal.tradeable = row.tradeable;
   if (row.pHatLb != null) signal.pHatLB = row.pHatLb;
+  if (row.commitTxSignature) signal.commitTxSignature = row.commitTxSignature;
+  if (row.commitHash) signal.commitHash = row.commitHash;
+  if (row.revealTxSignature) signal.revealTxSignature = row.revealTxSignature;
+  if (row.commitSlot != null) signal.commitSlot = row.commitSlot;
+  if (row.marketPriceAtCommit != null) signal.marketPriceAtCommit = row.marketPriceAtCommit;
 
   return signal;
 }
@@ -46,6 +51,11 @@ function signalToRow(signal: Signal) {
     features: signal.features ? JSON.stringify(signal.features) : null,
     tradeable: signal.tradeable ?? null,
     pHatLb: signal.pHatLB ?? null,
+    commitTxSignature: signal.commitTxSignature ?? null,
+    commitHash: signal.commitHash ?? null,
+    revealTxSignature: signal.revealTxSignature ?? null,
+    commitSlot: signal.commitSlot ?? null,
+    marketPriceAtCommit: signal.marketPriceAtCommit ?? null,
   };
 }
 
@@ -141,6 +151,50 @@ export function pruneExpiredSignals(): number {
     .where(lt(schema.signals.expiresAt, now))
     .run();
   return result.changes;
+}
+
+export function updateSignalCommitment(
+  signalId: string,
+  data: { txSignature: string; hash: string; slot?: number; marketPriceAtCommit?: number },
+): void {
+  db.update(schema.signals)
+    .set({
+      commitTxSignature: data.txSignature,
+      commitHash: data.hash,
+      commitSlot: data.slot ?? null,
+      marketPriceAtCommit: data.marketPriceAtCommit ?? null,
+    })
+    .where(eq(schema.signals.id, signalId))
+    .run();
+}
+
+export function updateSignalReveal(signalId: string, txSignature: string): void {
+  db.update(schema.signals)
+    .set({ revealTxSignature: txSignature })
+    .where(eq(schema.signals.id, signalId))
+    .run();
+}
+
+export function getUncommittedSignals(): Signal[] {
+  const rows = db
+    .select()
+    .from(schema.signals)
+    .where(isNull(schema.signals.commitTxSignature))
+    .orderBy(desc(schema.signals.createdAt))
+    .all();
+
+  return rows.map(rowToSignal);
+}
+
+export function getCommittedSignals(): Signal[] {
+  const rows = db
+    .select()
+    .from(schema.signals)
+    .where(isNotNull(schema.signals.commitTxSignature))
+    .orderBy(desc(schema.signals.createdAt))
+    .all();
+
+  return rows.map(rowToSignal);
 }
 
 export function getLatestSignalTimestamp(): string | null {

@@ -4,6 +4,7 @@ import { addNewsEvent } from '@/store/news-events';
 import { logActivity } from '@/store/activity-log';
 import { syncAllMarkets, syncRecentMarkets, getSyncStatus } from '@/data/market-sync';
 import { getAllMarketsList } from '@/store/markets';
+import { commitUncommittedSignals } from '@/solana/commitment';
 import { config } from '@/lib/config';
 import { nanoid } from 'nanoid';
 import type { Market, OrchestratorStatus, NewsEvent } from '@/lib/types';
@@ -364,6 +365,13 @@ export function startOrchestrator(): void {
     .catch((e) => {
       logActivity('orchestrator', 'error', `Initial sync failed: ${e instanceof Error ? e.message : String(e)}`);
     });
+
+  // Commit any signals that were saved but not yet committed to Solana
+  if (config.solana.enabled) {
+    commitUncommittedSignals().catch((e) => {
+      logActivity('orchestrator', 'error', `Failed to commit pending signals: ${e instanceof Error ? e.message : String(e)}`);
+    });
+  }
 
   // Start watchers
   startPriceWatcher(onPriceChanges);

@@ -5,7 +5,9 @@ import { model } from '@/lib/model';
 import { config } from '@/lib/config';
 import { searchNews, buildNewsQuery } from '@/data/valyu';
 import { calculateNetEV, evToConfidence } from '@/intelligence/calculations';
-import { saveSignal } from '@/store/signals';
+import { saveSignal, updateSignalCommitment } from '@/store/signals';
+import { commitSignal } from '@/solana/commitment';
+import { logActivity } from '@/store/activity-log';
 import type { EventPodStateType } from './state';
 import type { Signal, ToolCallRecord } from '@/lib/types';
 
@@ -242,6 +244,23 @@ export async function generateSignalNode(
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     console.error(`Failed to persist signal: ${errorMessage}`);
+  }
+
+  // Fire-and-forget Solana commitment — never blocks the pipeline
+  if (config.solana.enabled) {
+    commitSignal(signal).then((commitResult) => {
+      if (commitResult.ok) {
+        updateSignalCommitment(signal.id, {
+          txSignature: commitResult.data.txSignature,
+          hash: commitResult.data.hash,
+          slot: commitResult.data.slot,
+          marketPriceAtCommit: signal.marketPrice,
+        });
+        logActivity('orchestrator', 'info', `Committed signal ${signal.id} to Solana: ${commitResult.data.txSignature}`);
+      } else {
+        logActivity('orchestrator', 'error', `Solana commit failed for ${signal.id}: ${commitResult.error}`);
+      }
+    }).catch(() => {});
   }
 
   const toolCall: ToolCallRecord = {

@@ -106,4 +106,11 @@ export const config = {
     maxConcurrentAnalyses: envInt("MAX_CONCURRENT_ANALYSES", 3),
     maxAnalysesPerMinute: envInt("MAX_ANALYSES_PER_MINUTE", 5),
   },
+
+  /** Solana on-chain commitments */
+  solana: {
+    enabled: env("SOLANA_ENABLED", "false") === "true",
+    rpcUrl: env("SOLANA_RPC_URL", "https://api.devnet.solana.com"),
+    keypair: env("SOLANA_KEYPAIR", ""),
+  },
 }

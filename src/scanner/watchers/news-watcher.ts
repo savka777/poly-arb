@@ -1,5 +1,6 @@
 import { searchNews, buildNewsQuery } from '@/data/valyu';
 import { logActivity } from '@/store/activity-log';
+import { hasSeenArticle, markArticleSeen, loadSeenKeys, pruneSeenArticles } from '@/store/seen-articles';
 import { config } from '@/lib/config';
 import type { Market, NewsResult } from '@/lib/types';
 
@@ -17,13 +18,21 @@ interface NewsWatcherState {
   intervalHandle: ReturnType<typeof setInterval> | null;
 }
 
-const MAX_SEEN = 500;
+// In-memory cache backed by SQLite — survives restarts
+let seenTitlesCache: Set<string> | null = null;
+
+function getSeenTitles(): Set<string> {
+  if (!seenTitlesCache) {
+    seenTitlesCache = loadSeenKeys('news');
+  }
+  return seenTitlesCache;
+}
 
 const state: NewsWatcherState = {
   running: false,
   lastPollAt: null,
   queryIndex: 0,
-  seenTitles: new Set(),
+  seenTitles: new Set(), // kept for interface compat, but not used for dedup
   intervalHandle: null,
 };
 
@@ -106,15 +115,17 @@ async function pollNews(): Promise<void> {
 
   // Deduplicate
   const newArticles: NewsResult[] = [];
+  const seen = getSeenTitles();
   for (const article of newsResult.data) {
     const key = dedupeKey(article.title);
-    if (state.seenTitles.has(key)) continue;
-
-    state.seenTitles.add(key);
-    if (state.seenTitles.size > MAX_SEEN) {
-      const first = state.seenTitles.values().next().value;
-      if (first !== undefined) state.seenTitles.delete(first);
+    if (seen.has(key)) continue;
+    if (hasSeenArticle(key, 'news')) {
+      seen.add(key);
+      continue;
     }
+
+    seen.add(key);
+    markArticleSeen(key, 'news');
     newArticles.push(article);
   }
 
@@ -160,10 +171,13 @@ export function startNewsWatcher(callback: NewsMatchCallback): void {
   state.running = true;
   onMatchCallback = callback;
 
+  // Load persisted seen keys + prune old entries
+  const loaded = getSeenTitles();
+  const pruned = pruneSeenArticles();
   logActivity(
     'news-watcher',
     'info',
-    `Starting (interval: ${config.orchestrator.newsWatchIntervalMs}ms, matching against ${activeMarkets.length} markets)`,
+    `Starting (interval: ${config.orchestrator.newsWatchIntervalMs}ms, ${loaded.size} seen articles loaded${pruned > 0 ? `, ${pruned} old pruned` : ''})`,
   );
 
   // Initial poll after short delay

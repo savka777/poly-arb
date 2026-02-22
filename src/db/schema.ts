@@ -18,6 +18,11 @@ export const signals = sqliteTable('signals', {
   features: text('features'), // JSON string
   tradeable: integer('tradeable', { mode: 'boolean' }),
   pHatLb: real('p_hat_lb'),
+  commitTxSignature: text('commit_tx_signature'),
+  commitHash: text('commit_hash'),
+  revealTxSignature: text('reveal_tx_signature'),
+  commitSlot: integer('commit_slot'),
+  marketPriceAtCommit: real('market_price_at_commit'),
 });
 
 export const markets = sqliteTable('markets', {
@@ -38,6 +43,12 @@ export const markets = sqliteTable('markets', {
   tags: text('tags'), // JSON array
   oneDayPriceChange: real('one_day_price_change'),
   syncedAt: text('synced_at'),
+});
+
+export const seenArticles = sqliteTable('seen_articles', {
+  key: text('key').primaryKey(),
+  source: text('source', { enum: ['rss', 'news'] }).notNull(),
+  createdAt: text('created_at').notNull(),
 });
 
 export const watchlist = sqliteTable('watchlist', {

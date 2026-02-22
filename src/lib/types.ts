@@ -68,6 +68,11 @@ export interface Signal {
   tradeable?: boolean
   pHatLB?: number
   source?: "scanner" | "news-monitor"
+  commitTxSignature?: string
+  commitHash?: string
+  revealTxSignature?: string
+  commitSlot?: number
+  marketPriceAtCommit?: number
 }
 
 export interface NewsResult {

@@ -14,6 +14,7 @@
 import RssParser from 'rss-parser';
 import { FEEDS, type FeedSource } from '@/data/feeds';
 import { logActivity } from '@/store/activity-log';
+import { hasSeenArticle, markArticleSeen, loadSeenKeys, pruneSeenArticles } from '@/store/seen-articles';
 import { config } from '@/lib/config';
 import type { Market, NewsResult } from '@/lib/types';
 
@@ -52,8 +53,15 @@ const state: RssWatcherState = {
   totalMatches: 0,
 };
 
-const MAX_SEEN = 5000;
-const seenKeys = new Set<string>();
+// In-memory cache backed by SQLite — survives restarts
+let seenKeys: Set<string> | null = null;
+
+function getSeenKeys(): Set<string> {
+  if (!seenKeys) {
+    seenKeys = loadSeenKeys('rss');
+  }
+  return seenKeys;
+}
 
 export type RssMatchCallback = (matches: RssMatch[]) => void;
 
@@ -185,14 +193,15 @@ async function fetchFeed(feed: FeedSource): Promise<FeedResult> {
       const url = (item.link ?? '').trim();
       const key = dedupeKey(url, title);
 
-      if (seenKeys.has(key)) continue;
-      seenKeys.add(key);
-
-      // Evict oldest keys if over limit
-      if (seenKeys.size > MAX_SEEN) {
-        const first = seenKeys.values().next().value;
-        if (first !== undefined) seenKeys.delete(first);
+      const seen = getSeenKeys();
+      if (seen.has(key)) continue;
+      if (hasSeenArticle(key, 'rss')) {
+        seen.add(key);
+        continue;
       }
+
+      seen.add(key);
+      markArticleSeen(key, 'rss');
 
       articles.push({
         title,
@@ -293,8 +302,11 @@ export function startRssWatcher(callback: RssMatchCallback): void {
 
   const intervalMs = config.rss?.intervalMs ?? 30_000;
 
+  // Load persisted seen keys + prune old entries
+  const loaded = getSeenKeys();
+  const pruned = pruneSeenArticles();
   logActivity('news-watcher', 'info',
-    `RSS watcher starting: ${FEEDS.length} feeds, polling every ${intervalMs / 1000}s`);
+    `RSS watcher starting: ${FEEDS.length} feeds, polling every ${intervalMs / 1000}s (${loaded.size} seen articles loaded${pruned > 0 ? `, ${pruned} old entries pruned` : ''})`);
 
   // First poll after 3s
   setTimeout(() => {
