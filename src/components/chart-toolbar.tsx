@@ -123,7 +123,7 @@ export function ChartToolbar({
             : "text-darwin-text-muted hover:text-darwin-text-secondary"
         )}
       >
-        Darwin
+        Polyverse
         {showOverrideIndicators && (
           <OverrideDot visible={isOverridden("overlay.darwinEstimate")} />
         )}

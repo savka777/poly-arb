@@ -79,7 +79,7 @@ export function MarketCard({ market, signal, loading, watchlisted }: MarketCardP
           {hasSignal && (
             <>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-darwin-text-secondary">Darwin</span>
+                <span className="text-xs text-darwin-text-secondary">Polyverse</span>
                 <span className="font-data text-sm text-darwin-text">
                   {formatProbability(signal.darwinEstimate)}
                 </span>

@@ -351,21 +351,24 @@ function MarketChart({
   })
 
   return (
-    <div className="h-[320px] shrink-0 bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg overflow-hidden">
+    <div className="flex-1 min-h-[200px] bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg overflow-hidden flex flex-col">
       <div className="px-3 py-1.5 border-b border-[#333333]">
         <p className="text-xs text-[#ccd0e0] truncate">{star.market.question}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-[#8899aa]">
-            {(star.market.probability * 100).toFixed(1)}%
+          <span className="text-xs font-mono text-[#ccd0e0]">
+            {(star.market.probability * 100).toFixed(1)}¢
           </span>
           {star.signal && (
             <span className={`text-xs font-mono ${star.signal.ev > 0 ? "text-[#00ff88]" : "text-[#ff4466]"}`}>
               {star.signal.ev > 0 ? "+" : ""}{(star.signal.ev * 100).toFixed(1)}pp
             </span>
           )}
+          <span className="text-[10px] text-[#556688]">
+            Vol: ${star.market.volume24hr ? (star.market.volume24hr >= 1e6 ? (star.market.volume24hr / 1e6).toFixed(1) + "M" : (star.market.volume24hr / 1e3).toFixed(0) + "K") : (star.market.volume / 1e6).toFixed(1) + "M"}
+          </span>
         </div>
       </div>
-      <div className="h-[275px]">
+      <div className="flex-1 min-h-0">
         {isLoading || chartData.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <span className="text-xs text-[#8899aa] animate-pulse">
@@ -552,30 +555,57 @@ export function GalaxyScene() {
     setScoutConfigOpen(true)
   }, [])
 
+  const allMarkets = marketsData?.markets ?? []
+
   // Navigate to a market by ID — find its constellation, focus it, then select the star
   const handleNavigateToMarket = useCallback((marketId: string) => {
     for (const c of galaxyData.constellations) {
       const star = c.stars.find((s) => s.market.id === marketId)
       if (star) {
+        setHiddenCategories((prev) => {
+          if (!prev.has(c.name)) return prev
+          const next = new Set(prev)
+          next.delete(c.name)
+          return next
+        })
         setCameraMode("constellation")
         setCameraTarget(c.position)
         setFocusedConstellation(c.name)
         setSelectedStars([star])
+        setScoutMinimized(true)
         return
       }
     }
   }, [galaxyData.constellations])
 
+  // All market IDs in the galaxy
+  const galaxyMarketIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const c of galaxyData.constellations) {
+      for (const s of c.stars) ids.add(s.market.id)
+    }
+    return ids
+  }, [galaxyData.constellations])
+
+  // Scout events filtered to only markets that exist in the galaxy
+  const visibleScoutEvents = useMemo(() => {
+    if (!scoutData?.events) return []
+    return scoutData.events
+      .map((e) => ({
+        ...e,
+        matchedMarkets: e.matchedMarkets.filter((m) => galaxyMarketIds.has(m.marketId)),
+      }))
+      .filter((e) => e.matchedMarkets.length > 0)
+  }, [scoutData, galaxyMarketIds])
+
   // Scout events filtered to selected stars
   const selectedScoutEvents = useMemo(() => {
-    if (!scoutData?.events || selectedStars.length === 0) return []
+    if (selectedStars.length === 0) return []
     const ids = new Set(selectedStars.map((s) => s.market.id))
-    return scoutData.events.filter((e) =>
+    return visibleScoutEvents.filter((e) =>
       e.matchedMarkets.some((m) => ids.has(m.marketId))
     )
-  }, [scoutData, selectedStars])
-
-  const allMarkets = marketsData?.markets ?? []
+  }, [visibleScoutEvents, selectedStars])
 
   // Find focused constellation's stars for the side list
   const focusedData = filteredConstellations.find((c) => c.name === focusedConstellation)
@@ -608,23 +638,27 @@ export function GalaxyScene() {
       {galaxyData.loading && <LoadingOverlay />}
 
       {/* Header */}
-      <div style={{ position: "absolute", top: 16, left: 16, zIndex: 40 }}>
-        <div className="flex items-center gap-3">
+      <div style={{ position: "absolute", top: 16, left: 16, zIndex: 40, width: cameraMode === "constellation" ? 340 : undefined }}>
+        <div className="flex items-center gap-2.5">
           {cameraMode === "constellation" && (
             <button
               onClick={handleBackToGalaxy}
-              className="flex items-center gap-1.5 bg-[#181818]/80 backdrop-blur border border-[#333333] rounded px-3 py-1.5 text-xs uppercase tracking-wider text-[#99aabb] hover:text-[#ccd0e0] hover:border-[#334466] transition-colors"
+              className="flex items-center gap-1.5 bg-[#181818]/80 backdrop-blur border border-[#333333] rounded px-3 py-1.5 text-xs uppercase tracking-wider text-[#99aabb] hover:text-[#ccd0e0] hover:border-[#334466] transition-colors shrink-0"
             >
               <ArrowLeft className="h-3 w-3" />
               Galaxy
             </button>
           )}
+          <h1 className="text-lg font-semibold tracking-tight text-[#ccd0e0] shrink-0">
+            POLYVERSE
+          </h1>
           {/* Search button */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg p-1.5 text-[#99aabb] hover:text-[#ccd0e0] hover:border-[#556688] transition-colors ml-2"
+            className={`flex items-center gap-1.5 bg-[#181818]/80 backdrop-blur border border-[#333333] rounded px-3 py-1.5 text-xs uppercase tracking-wider text-[#99aabb] hover:text-[#ccd0e0] hover:border-[#334466] transition-colors ${cameraMode === "constellation" ? "flex-1" : "shrink-0"}`}
           >
-            <Search className="h-4 w-4" />
+            <Search className="h-3 w-3" />
+            Search...
           </button>
         </div>
       </div>
@@ -634,7 +668,7 @@ export function GalaxyScene() {
 
       {/* Chart panel(s) for selected stars — stacked vertically on left, synced */}
       {focusedData && selectedStars.length > 0 && (
-        <div className="absolute left-4 top-16 bottom-4 z-40 pointer-events-auto flex flex-col gap-2 overflow-y-auto w-[340px]">
+        <div className="absolute left-4 top-14 bottom-4 z-40 pointer-events-auto flex flex-col gap-2 overflow-y-auto w-[340px]">
           <SyncedChartStack stars={selectedStars} />
         </div>
       )}
@@ -648,8 +682,8 @@ export function GalaxyScene() {
         />
       )}
 
-      {/* Scout notification panel — bottom-right, shifts left when detail panel is open */}
-      {scoutData?.events && scoutData.events.length > 0 && (
+      {/* Scout notification panel — bottom-right, hidden in zoomed-in view */}
+      {!focusedConstellation && visibleScoutEvents.length > 0 && (
         <div className={`absolute bottom-4 z-40 pointer-events-auto transition-all duration-300 ${selectedStars.length > 0 ? "right-[400px]" : "right-4"}`}>
           {scoutMinimized ? (
             <button
@@ -657,17 +691,15 @@ export function GalaxyScene() {
               className="flex items-center gap-2 bg-[#0a0a10]/90 backdrop-blur border border-[#2a2a3a] rounded-lg px-3 py-2 text-[#44aaff] hover:border-[#44aaff]/40 transition-colors"
             >
               <span className="text-[10px]">🛸</span>
-              <span className="text-[10px] uppercase tracking-wider">Signal Scout ({scoutData.events.length})</span>
+              <span className="text-[10px] uppercase tracking-wider">Signal Scout ({visibleScoutEvents.length})</span>
               <ChevronUp className="h-3 w-3" />
             </button>
           ) : (
             <div className="relative">
-              <div className="absolute top-2 right-8 z-10 flex items-center gap-1.5">
-                {scoutData.events.length > 0 && (
-                  <span className="text-[9px] bg-[#44aaff]/20 text-[#44aaff] px-1.5 py-0.5 rounded-full font-mono">
-                    {scoutData.events.length}
-                  </span>
-                )}
+              <div className="absolute top-2 right-3 z-10 flex items-center gap-1.5">
+                <span className="text-[9px] bg-[#44aaff]/20 text-[#44aaff] px-1.5 py-0.5 rounded-full font-mono">
+                  {visibleScoutEvents.length}
+                </span>
                 <button
                   onClick={() => setScoutMinimized(true)}
                   className="text-[#556688] hover:text-[#aabbcc] transition-colors"
@@ -677,7 +709,7 @@ export function GalaxyScene() {
                 </button>
               </div>
               <ScoutNotificationPanel
-                events={scoutData.events}
+                events={visibleScoutEvents}
                 onDismiss={dismissEvent}
                 onMarketClick={handleNavigateToMarket}
               />
@@ -734,7 +766,6 @@ export function GalaxyScene() {
 
       {/* Alpha ticker banner */}
       <AlphaTicker />
-
 
       {/* Color picker */}
       {colorPickerTarget && (

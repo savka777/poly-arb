@@ -99,7 +99,7 @@ function StarHoverCard({ star }: { star: StarData }) {
               />
             )
           })()}
-          {/* Darwin estimate marker */}
+          {/* Polyverse estimate marker */}
           {darwinPct !== null && (
             <div
               style={{
@@ -189,8 +189,15 @@ function MarketStar({ star, center, onStarClick, hovered, selected, onHover, onU
     center[2] + star.localPosition[2],
   ]
 
-  const glowSize = star.size * 1.6 * (hovered ? 1.5 : selected ? 1.3 : 1)
+  const glowSize = star.size * 1.6 * (hovered ? 1.5 : selected ? 2.0 : 1)
   const color = useMemo(() => new THREE.Color(star.color), [star.color])
+  const selectedColor = useMemo(() => {
+    if (!selected) return color
+    // Brighten selected star color towards white
+    const bright = color.clone()
+    bright.lerp(new THREE.Color("#ffffff"), 0.4)
+    return bright
+  }, [selected, color])
 
   return (
     <group position={pos}>
@@ -214,24 +221,40 @@ function MarketStar({ star, center, onStarClick, hovered, selected, onHover, onU
           <planeGeometry args={[glowSize, glowSize]} />
           <meshBasicMaterial
             map={getGlowTexture()}
-            color={color}
+            color={selectedColor}
             transparent
-            opacity={0.92}
+            opacity={selected ? 1.0 : 0.92}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             side={THREE.DoubleSide}
           />
         </mesh>
       </Billboard>
+      {/* Selection ring — only visible when selected */}
+      {selected && (
+        <Billboard>
+          <mesh>
+            <planeGeometry args={[glowSize * 3, glowSize * 3]} />
+            <meshBasicMaterial
+              map={getGlowTexture()}
+              color={selectedColor}
+              transparent
+              opacity={0.5}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+            />
+          </mesh>
+        </Billboard>
+      )}
       {/* Wider soft halo */}
       <Billboard>
         <mesh>
           <planeGeometry args={[glowSize * 2, glowSize * 2]} />
           <meshBasicMaterial
             map={getGlowTexture()}
-            color={color}
+            color={selectedColor}
             transparent
-            opacity={0.25 + star.emissiveIntensity * 0.18}
+            opacity={selected ? 0.55 : 0.25 + star.emissiveIntensity * 0.18}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             side={THREE.DoubleSide}

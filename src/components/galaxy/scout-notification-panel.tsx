@@ -120,23 +120,35 @@ export function ScoutNotificationPanel({ events, onDismiss, onMarketClick }: Sco
                           {/* Captured price */}
                           {market.capturedPrice !== undefined && (
                             <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#1a2a1a] text-[#44cc88] font-mono">
-                              YES {(market.capturedPrice * 100).toFixed(0)}%
+                              YES {(market.capturedPrice * 100).toFixed(0)}¢
                             </span>
                           )}
 
-                          {/* Open trade link */}
-                          {market.url && (
-                            <a
-                              href={market.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-auto flex items-center gap-0.5 text-[9px] text-[#44aaff] hover:text-[#66bbff] transition-colors uppercase tracking-wider"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              Trade
-                              <ExternalLink className="h-2.5 w-2.5" />
-                            </a>
-                          )}
+                          <span className="ml-auto flex items-center gap-2">
+                            {/* View in galaxy */}
+                            {onMarketClick && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onMarketClick(market.marketId) }}
+                                className="flex items-center gap-0.5 text-[9px] text-[#8899aa] hover:text-[#ccd0e0] transition-colors uppercase tracking-wider"
+                              >
+                                View
+                              </button>
+                            )}
+
+                            {/* Open trade on Polymarket */}
+                            {market.url && (
+                              <a
+                                href={market.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-0.5 text-[9px] text-[#44aaff] hover:text-[#66bbff] transition-colors uppercase tracking-wider"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Trade
+                                <ExternalLink className="h-2.5 w-2.5" />
+                              </a>
+                            )}
+                          </span>
                         </div>
                       </div>
                     ))}

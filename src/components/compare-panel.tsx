@@ -284,7 +284,7 @@ export function ComparePanel({
               </span>
             </span>
             <span className="font-data text-[11px]">
-              <span className="text-darwin-text-muted">Darwin </span>
+              <span className="text-darwin-text-muted">Polyverse </span>
               <span className="text-darwin-text">
                 {formatProbability(signal.darwinEstimate)}
               </span>

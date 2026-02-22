@@ -139,7 +139,7 @@ export function BubbleScatter({ markets, signalMap }: BubbleScatterProps) {
                 Mkt {formatProbability(hovered.signal.marketPrice)}
               </span>
               <span className="text-darwin-text">
-                Darwin {formatProbability(hovered.signal.darwinEstimate)}
+                Polyverse {formatProbability(hovered.signal.darwinEstimate)}
               </span>
               <span className={hovered.signal.ev > 0 ? "text-darwin-green" : "text-darwin-red"}>
                 {formatEV(hovered.signal.ev)}
@@ -239,7 +239,7 @@ export function BubbleScatter({ markets, signalMap }: BubbleScatterProps) {
             className="fill-[#888899] text-[11px]"
             style={{ fontFamily: "var(--font-jetbrains), monospace" }}
           >
-            Darwin Estimate
+            Polyverse Estimate
           </text>
 
           {/* Bubbles */}

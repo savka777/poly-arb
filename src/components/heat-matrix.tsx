@@ -196,7 +196,7 @@ export function HeatMatrix({ markets, signalMap }: HeatMatrixProps) {
                 Mkt {formatProbability(hovered.signal.marketPrice)}
               </span>
               <span className="text-darwin-text">
-                Darwin {formatProbability(hovered.signal.darwinEstimate)}
+                Polyverse {formatProbability(hovered.signal.darwinEstimate)}
               </span>
               <span className={hovered.signal.ev > 0 ? "text-darwin-green" : "text-darwin-red"}>
                 {formatEV(hovered.signal.ev)}

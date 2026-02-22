@@ -69,7 +69,7 @@ function gammaToMarket(gamma: GammaMarket, event?: { id: string; title: string }
     volume: gamma.volume ?? 0,
     liquidity: gamma.liquidity ?? 0,
     endDate: gamma.endDate ?? new Date().toISOString(),
-    url: `https://polymarket.com/event/${eventSlug ?? gamma.slug}`,
+    url: eventSlug ? `https://polymarket.com/event/${eventSlug}/${gamma.slug}` : `https://polymarket.com/event/${gamma.slug}`,
     category: gamma.category || undefined,
     lastUpdated: new Date().toISOString(),
     clobTokenId,

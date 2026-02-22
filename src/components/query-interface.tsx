@@ -35,7 +35,7 @@ export function QueryInterface({
             handleSubmit()
           }
         }}
-        placeholder="Ask Darwin about this market..."
+        placeholder="Ask Polyverse about this market..."
         disabled={disabled || loading}
         className="flex-1 rounded-sm border border-darwin-border bg-darwin-card px-3 py-2 text-sm text-darwin-text placeholder:text-darwin-text-muted focus:outline-none focus:ring-1 focus:ring-darwin-blue disabled:opacity-50"
       />

@@ -90,7 +90,7 @@ function FeedEntry({ market, signal }: { market: Market; signal: Signal }) {
             <span className="text-darwin-border">·</span>
             <span className="text-darwin-text-secondary">Mkt {formatProbability(signal.marketPrice)}</span>
             <span className="text-darwin-border">→</span>
-            <span className="text-darwin-text">Darwin {formatProbability(signal.darwinEstimate)}</span>
+            <span className="text-darwin-text">Polyverse {formatProbability(signal.darwinEstimate)}</span>
             <span className="text-darwin-border">·</span>
             <span className={cn(
               "uppercase tracking-wider",

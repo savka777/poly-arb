@@ -52,7 +52,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
       <p className="mb-1 text-darwin-text-secondary">{label ? formatDateTick(label) : ""}</p>
       {payload.map((entry) => (
         <p key={entry.dataKey} style={{ color: entry.color }}>
-          {entry.dataKey === "marketPrice" ? "Market" : "Darwin"}:{" "}
+          {entry.dataKey === "marketPrice" ? "Market" : "Polyverse"}:{" "}
           {formatPercent(entry.value)}
         </p>
       ))}

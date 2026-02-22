@@ -28,7 +28,8 @@ export function usePrices(
       return res.json()
     },
     enabled: !!tokenId,
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
   })
 }
 

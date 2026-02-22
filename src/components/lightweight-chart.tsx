@@ -80,10 +80,8 @@ const PRICE_FORMAT = {
 const VOLUME_FORMAT = {
   type: "custom" as const,
   formatter: (val: number) => {
-    const pct = val * 100
-    if (pct >= 10) return pct.toFixed(1)
-    if (pct >= 1) return pct.toFixed(2)
-    return pct.toFixed(3)
+    if (val >= 1000) return `${(val / 1000).toFixed(1)}k`
+    return val.toFixed(0)
   },
 }
 
@@ -658,7 +656,7 @@ export function LightweightChart({
           ) : null}
           {tooltip.darwin !== null && (
             <div className="mt-1 pt-1 border-t border-darwin-border/40">
-              <span className="text-darwin-text-muted">Darwin </span>
+              <span className="text-darwin-text-muted">Polyverse </span>
               <span className="text-darwin-green">{formatPercent(tooltip.darwin)}</span>
             </div>
           )}

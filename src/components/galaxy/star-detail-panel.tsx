@@ -1,6 +1,6 @@
 "use client"
 
-import { X, TrendingUp, TrendingDown, Newspaper, Brain, Radar } from "lucide-react"
+import { X, TrendingUp, TrendingDown, Newspaper, Brain, Radar, ExternalLink } from "lucide-react"
 import type { StarData } from "@/hooks/use-galaxy-data"
 import type { ScoutEvent } from "@/lib/types"
 
@@ -42,6 +42,14 @@ export function StarDetailPanel({ star, onClose, scoutEvents }: StarDetailPanelP
               <span className="text-xs text-[#99aabb]">
                 Vol: ${(market.volume / 1e6).toFixed(1)}M
               </span>
+              <a
+                href={market.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-0.5 text-xs text-[#44aaff] hover:text-[#66bbff] transition-colors"
+              >
+                Trade <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
           </div>
           <button
@@ -56,18 +64,18 @@ export function StarDetailPanel({ star, onClose, scoutEvents }: StarDetailPanelP
         <div className="p-4 border-b border-[#333333]">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="text-xs uppercase tracking-wider text-[#99aabb] mb-1">
+              <div className="text-xs uppercase tracking-wider text-[#00ff88] mb-1">
                 Yes
               </div>
-              <div className="text-2xl font-mono text-[#dddde0]">
+              <div className="text-2xl font-mono text-[#00ff88]">
                 {(market.probability * 100).toFixed(1)}¢
               </div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wider text-[#99aabb] mb-1">
+              <div className="text-xs uppercase tracking-wider text-[#ff4466] mb-1">
                 No
               </div>
-              <div className="text-2xl font-mono text-[#dddde0]">
+              <div className="text-2xl font-mono text-[#ff4466]">
                 {((1 - market.probability) * 100).toFixed(1)}¢
               </div>
             </div>
@@ -75,10 +83,10 @@ export function StarDetailPanel({ star, onClose, scoutEvents }: StarDetailPanelP
           {signal && (
             <div className="mt-3 pt-3 border-t border-[#2a2a2a]">
               <div className="text-xs uppercase tracking-wider text-[#99aabb] mb-1">
-                Darwin Estimate
+                Polyverse Estimate
               </div>
               <div className="text-lg font-mono text-[#dddde0]">
-                {(signal.darwinEstimate * 100).toFixed(1)}%
+                {(signal.darwinEstimate * 100).toFixed(1)}¢
               </div>
             </div>
           )}

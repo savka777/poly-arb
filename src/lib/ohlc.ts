@@ -78,12 +78,12 @@ export function ohlcToChartData(ohlc: OhlcPoint[]): OhlcDataPoint[] {
 }
 
 export function ohlcToVolumeData(ohlc: OhlcPoint[]): VolumeDataPoint[] {
-  // Use price range (high - low) as a volatility proxy since Polymarket
-  // doesn't expose real trade volume — only sampled price points.
-  // This gives meaningful bar height variation across candles.
+  // Use tick count per bucket as a trading activity / volume proxy.
+  // Polymarket doesn't expose dollar volume directly, but the number of
+  // price samples in each time bucket correlates with real trade activity.
   return ohlc.map((p) => ({
     time: p.time as UTCTimestamp,
-    value: Math.max(p.high - p.low, 0.001),
+    value: p.volume,
     color: p.close >= p.open ? "#00D47E80" : "#FF444480",
   }))
 }
