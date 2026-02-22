@@ -21,21 +21,24 @@ interface ScoutNotificationPanelProps {
   events: ScoutEvent[]
   onDismiss?: (id: string) => void
   onMarketClick?: (marketId: string) => void
+  embedded?: boolean
 }
 
-export function ScoutNotificationPanel({ events, onDismiss, onMarketClick }: ScoutNotificationPanelProps) {
+export function ScoutNotificationPanel({ events, onDismiss, onMarketClick, embedded }: ScoutNotificationPanelProps) {
   return (
-    <div className="bg-[#0a0a10]/90 backdrop-blur border border-[#2a2a3a] rounded-lg overflow-hidden w-[340px]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[#2a2a3a] bg-[#0a0a10]/60">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px]">🛸</span>
-          <span className="text-[10px] uppercase tracking-wider text-[#44aaff]">Signal Scout</span>
+    <div className={embedded ? "" : "bg-[#0a0a10]/90 backdrop-blur border border-[#2a2a3a] rounded-lg overflow-hidden w-[340px]"}>
+      {/* Header — hidden when embedded in nav bar */}
+      {!embedded && (
+        <div className="flex items-center justify-between px-3 py-2 border-b border-[#2a2a3a] bg-[#0a0a10]/60">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px]">🛸</span>
+            <span className="text-[10px] uppercase tracking-wider text-[#44aaff]">Signal Scout</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Event list */}
-      <div className="max-h-[50vh] overflow-y-auto">
+      <div className={embedded ? "" : "max-h-[50vh] overflow-y-auto"}>
         {events.length === 0 ? (
           <div className="px-3 py-4 text-center">
             <p className="text-[11px] text-[#556688]">Scanning feeds…</p>
