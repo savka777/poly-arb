@@ -32,11 +32,6 @@ export function ScoutNotificationPanel({ events, onDismiss, onMarketClick }: Sco
           <span className="text-[10px]">🛸</span>
           <span className="text-[10px] uppercase tracking-wider text-[#44aaff]">Signal Scout</span>
         </div>
-        {events.length > 0 && (
-          <span className="text-[9px] bg-[#44aaff]/20 text-[#44aaff] px-1.5 py-0.5 rounded-full font-mono">
-            {events.length}
-          </span>
-        )}
       </div>
 
       {/* Event list */}

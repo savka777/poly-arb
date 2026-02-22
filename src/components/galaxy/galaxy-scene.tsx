@@ -18,8 +18,8 @@ import { useScout, useScoutConfig, useScoutDismiss } from "@/hooks/use-scout"
 import type { ChartDataPoint } from "@/lib/chart-types"
 import type { ConstellationData, StarData } from "@/hooks/use-galaxy-data"
 import type { CameraMode } from "./camera-controller"
-import type { UTCTimestamp } from "lightweight-charts"
-import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, X, Search, ChevronUp, ChevronDown } from "lucide-react"
+import type { IChartApi, UTCTimestamp, LogicalRange } from "lightweight-charts"
+import { ArrowLeft, Loader2, X, Search, ChevronUp, ChevronDown } from "lucide-react"
 import { useMarkets } from "@/hooks/use-markets"
 import { MarketSearchModal } from "@/components/market-search-modal"
 
@@ -313,8 +313,17 @@ function SceneContent({
   )
 }
 
-function MarketChart({ star }: { star: StarData }) {
+function MarketChart({
+  star,
+  onChartReady,
+  isLast,
+}: {
+  star: StarData
+  onChartReady?: (id: string, chart: IChartApi) => void
+  isLast?: boolean
+}) {
   const { data: priceData, isLoading } = usePrices(star.market.clobTokenId, "1w")
+  const localChartRef = useRef<IChartApi | null>(null)
 
   const chartData = useMemo<ChartDataPoint[]>(() => {
     if (!priceData?.prices || priceData.prices.length === 0) return []
@@ -332,6 +341,13 @@ function MarketChart({ star }: { star: StarData }) {
       value: star.signal!.darwinEstimate,
     }))
   }, [star.signal, chartData])
+
+  // Register chart with sync group once ready
+  useEffect(() => {
+    if (localChartRef.current && onChartReady) {
+      onChartReady(star.market.id, localChartRef.current)
+    }
+  })
 
   return (
     <div className="h-[320px] shrink-0 bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg overflow-hidden">
@@ -363,12 +379,79 @@ function MarketChart({ star }: { star: StarData }) {
             lineColor="#4488cc"
             darwinColor={star.signal?.ev && star.signal.ev > 0 ? "#00ff88" : "#ff4466"}
             showDarwinEstimate={!!star.signal}
-            hideTimeScale
+            hideTimeScale={!isLast}
+            chartRef={localChartRef}
             height={275}
           />
         )}
       </div>
     </div>
+  )
+}
+
+// Syncs time ranges + crosshairs across multiple LightweightCharts
+function SyncedChartStack({ stars }: { stars: StarData[] }) {
+  const chartsRef = useRef<Map<string, IChartApi>>(new Map())
+  const syncingRef = useRef(false)
+
+  const handleChartReady = useCallback((id: string, chart: IChartApi) => {
+    if (chartsRef.current.get(id) === chart) return
+    chartsRef.current.set(id, chart)
+
+    // Subscribe to time range changes for sync
+    chart.timeScale().subscribeVisibleLogicalRangeChange((range: LogicalRange | null) => {
+      if (syncingRef.current || !range) return
+      syncingRef.current = true
+      for (const [otherId, otherChart] of chartsRef.current) {
+        if (otherId !== id) {
+          try {
+            otherChart.timeScale().setVisibleLogicalRange(range)
+          } catch { /* chart may be disposed */ }
+        }
+      }
+      syncingRef.current = false
+    })
+
+    // Subscribe to crosshair moves for sync
+    chart.subscribeCrosshairMove((param) => {
+      if (syncingRef.current) return
+      syncingRef.current = true
+      for (const [otherId, otherChart] of chartsRef.current) {
+        if (otherId !== id) {
+          try {
+            if (param.time) {
+              otherChart.setCrosshairPosition(NaN, param.time, otherChart.timeScale() as never)
+            } else {
+              otherChart.clearCrosshairPosition()
+            }
+          } catch { /* chart may be disposed */ }
+        }
+      }
+      syncingRef.current = false
+    })
+  }, [])
+
+  // Clean up stale chart refs when stars change
+  useEffect(() => {
+    const activeIds = new Set(stars.map((s) => s.market.id))
+    for (const id of chartsRef.current.keys()) {
+      if (!activeIds.has(id)) {
+        chartsRef.current.delete(id)
+      }
+    }
+  }, [stars])
+
+  return (
+    <>
+      {stars.map((s, i) => (
+        <MarketChart
+          key={s.market.id}
+          star={s}
+          onChartReady={handleChartReady}
+          isLast={i === stars.length - 1}
+        />
+      ))}
+    </>
   )
 }
 
@@ -406,7 +489,6 @@ export function GalaxyScene() {
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set())
   const [customColors, setCustomColors] = useState<Record<string, string>>({})
   const [colorPickerTarget, setColorPickerTarget] = useState<{ name: string; x: number; y: number } | null>(null)
-  const [tradesCollapsed, setTradesCollapsed] = useState(false)
   const [scoutMinimized, setScoutMinimized] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -559,66 +641,10 @@ export function GalaxyScene() {
       {/* Agent stats */}
       <AgentStatsOverlay onOpenConfig={handleUfoClick} />
 
-      {/* Market list + chart when zoomed into constellation */}
-      {focusedData && (
-        <div
-          className="absolute left-4 top-20 bottom-4 z-40 flex items-start gap-0 pointer-events-auto transition-all duration-300"
-          style={{ width: tradesCollapsed ? 40 : 380 }}
-        >
-          {/* Collapse toggle */}
-          <button
-            onClick={() => setTradesCollapsed((p) => !p)}
-            className="absolute -right-5 top-3 z-50 bg-[#181818]/90 backdrop-blur border border-[#333333] rounded-full w-6 h-6 flex items-center justify-center text-[#99aabb] hover:text-[#ccd0e0] transition-colors"
-          >
-            {tradesCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
-          </button>
-
-          {!tradesCollapsed && (
-            <div className="flex flex-col gap-2 w-full h-full">
-              {/* Market list */}
-              <div className={`bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg overflow-y-auto ${selectedStars.length > 0 ? "flex-1 min-h-0" : "h-full"}`}>
-                <div className="px-3 py-2 border-b border-[#333333] sticky top-0 bg-[#181818]/95">
-                  <span className="text-xs uppercase tracking-wider text-[#8899aa]">
-                    {focusedData.stars.length} Trades
-                  </span>
-                </div>
-                {focusedData.stars
-                  .sort((a, b) => Math.abs(b.signal?.ev ?? 0) - Math.abs(a.signal?.ev ?? 0))
-                  .map((star) => (
-                    <button
-                      key={star.market.id}
-                      onClick={() => handleStarClick(star)}
-                      className={`w-full text-left px-3 py-2 border-b border-[#2a2a2a] hover:bg-[#222222] transition-colors ${
-                        selectedStars.some((s) => s.market.id === star.market.id) ? "bg-[#222222]" : ""
-                      }`}
-                    >
-                      <p className="text-sm text-[#ccd0e0] leading-tight truncate">
-                        {star.market.question}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-[#8899aa]">
-                          {(star.market.probability * 100).toFixed(0)}%
-                        </span>
-                        {star.signal && (
-                          <span
-                            className={`text-xs font-mono ${
-                              star.signal.ev > 0 ? "text-[#00ff88]" : "text-[#ff4466]"
-                            }`}
-                          >
-                            {star.signal.ev > 0 ? "+" : ""}{(star.signal.ev * 100).toFixed(1)}pp
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-              </div>
-
-              {/* Chart panel(s) */}
-              {selectedStars.map((s) => (
-                <MarketChart key={s.market.id} star={s} />
-              ))}
-            </div>
-          )}
+      {/* Chart panel(s) for selected stars — stacked vertically on left, synced */}
+      {focusedData && selectedStars.length > 0 && (
+        <div className="absolute left-4 top-16 bottom-4 z-40 pointer-events-auto flex flex-col gap-2 overflow-y-auto w-[340px]">
+          <SyncedChartStack stars={selectedStars} />
         </div>
       )}
 
@@ -631,9 +657,9 @@ export function GalaxyScene() {
         />
       )}
 
-      {/* Scout notification panel — bottom-right */}
+      {/* Scout notification panel — bottom-right, shifts left when detail panel is open */}
       {scoutData?.events && scoutData.events.length > 0 && (
-        <div className="absolute bottom-4 right-4 z-40 pointer-events-auto">
+        <div className={`absolute bottom-4 z-40 pointer-events-auto transition-all duration-300 ${selectedStars.length > 0 ? "right-[400px]" : "right-4"}`}>
           {scoutMinimized ? (
             <button
               onClick={() => setScoutMinimized(false)}

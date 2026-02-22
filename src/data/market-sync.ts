@@ -12,6 +12,7 @@ const syncState = {
 function gammaEventToMarkets(event: {
   id: string;
   title: string;
+  slug: string;
   tags: Array<{ label: string; slug: string }>;
   markets: Array<{
     id: string;
@@ -63,7 +64,7 @@ function gammaEventToMarkets(event: {
       volume: m.volume ?? 0,
       liquidity: m.liquidity ?? 0,
       endDate: m.endDate ?? new Date().toISOString(),
-      url: `https://polymarket.com/event/${m.slug}`,
+      url: `https://polymarket.com/event/${event.slug}`,
       category,
       lastUpdated: new Date().toISOString(),
       clobTokenId,

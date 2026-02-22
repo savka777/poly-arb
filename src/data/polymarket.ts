@@ -44,7 +44,7 @@ interface GammaEvent {
   markets: GammaMarket[]
 }
 
-function gammaToMarket(gamma: GammaMarket, event?: { id: string; title: string }): Market {
+function gammaToMarket(gamma: GammaMarket, event?: { id: string; title: string }, eventSlug?: string): Market {
   let probability = 0.5
   try {
     const prices = JSON.parse(gamma.outcomePrices) as number[]
@@ -69,7 +69,7 @@ function gammaToMarket(gamma: GammaMarket, event?: { id: string; title: string }
     volume: gamma.volume ?? 0,
     liquidity: gamma.liquidity ?? 0,
     endDate: gamma.endDate ?? new Date().toISOString(),
-    url: `https://polymarket.com/event/${gamma.slug}`,
+    url: `https://polymarket.com/event/${eventSlug ?? gamma.slug}`,
     category: gamma.category || undefined,
     lastUpdated: new Date().toISOString(),
     clobTokenId,
@@ -250,7 +250,7 @@ export async function fetchTrendingMarkets(options?: {
 
     const best = scored[0]
     const eventInfo = { id: event.id, title: event.title }
-    const market = gammaToMarket(best.market, eventInfo)
+    const market = gammaToMarket(best.market, eventInfo, event.slug)
 
     // Apply standard filters
     if (new Date(market.endDate).getTime() <= now) continue
