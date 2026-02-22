@@ -690,9 +690,6 @@ export function GalaxyScene() {
               Galaxy
             </button>
           )}
-          <h1 className="text-lg font-semibold tracking-tight text-[#ccd0e0] shrink-0">
-            POLYVERSE
-          </h1>
           {/* Search button */}
           <button
             onClick={() => setSearchOpen(true)}
