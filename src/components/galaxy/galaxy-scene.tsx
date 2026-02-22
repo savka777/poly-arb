@@ -19,7 +19,8 @@ import type { ChartDataPoint } from "@/lib/chart-types"
 import type { ConstellationData, StarData } from "@/hooks/use-galaxy-data"
 import type { CameraMode } from "./camera-controller"
 import type { IChartApi, UTCTimestamp, LogicalRange } from "lightweight-charts"
-import { ArrowLeft, Loader2, X, Search, ChevronUp, ChevronDown } from "lucide-react"
+import type { ScoutEvent } from "@/lib/types"
+import { ArrowLeft, Loader2, X, Search, Radio } from "lucide-react"
 import { useMarkets } from "@/hooks/use-markets"
 import { MarketSearchModal } from "@/components/market-search-modal"
 import { AlphaTicker } from "@/components/alpha-ticker"
@@ -46,64 +47,105 @@ function MouseTracker({ mousePos }: { mousePos: React.MutableRefObject<THREE.Vec
   )
 }
 
-function AgentStatsOverlay({ onOpenConfig }: { onOpenConfig: () => void }) {
+function AgentNavBar({
+  scoutEvents,
+  onDismiss,
+  onMarketClick,
+  expanded,
+  onToggle,
+}: {
+  scoutEvents: ScoutEvent[]
+  onDismiss: (id: string) => void
+  onMarketClick: (marketId: string) => void
+  expanded: boolean
+  onToggle: () => void
+}) {
   const { data: signalsData } = useSignals()
   const { data: health } = useHealth()
-  const { data: scoutData } = useScout(1)
 
   const signalCount = signalsData?.total ?? 0
   const highEv = signalsData?.signals.filter((s) => s.confidence === "high").length ?? 0
-
-  const latestScout = scoutData?.events[0]
-  const scoutLabel = latestScout
-    ? latestScout.article.title.slice(0, 32) + (latestScout.article.title.length > 32 ? "…" : "")
-    : "Scanning feeds…"
+  const isLive = health?.status === "ok"
 
   return (
-    <div className="absolute top-4 right-4 z-40 pointer-events-none" style={{ pointerEvents: "none" }}>
-      <div className="bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg px-4 py-3 min-w-[200px]">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs uppercase tracking-wider text-[#8899aa]">
-            Agent Status
-          </span>
-          <div className="flex items-center gap-1.5">
-            <div
-              className={`h-1.5 w-1.5 rounded-full ${
-                health?.status === "ok" ? "bg-[#00ff88] animate-pulse" : "bg-[#556688]"
-              }`}
-            />
-            <span className="text-xs text-[#8899aa]">
-              {health?.status === "ok" ? "LIVE" : "..."}
-            </span>
+    <div
+      className="absolute right-4 top-1/2 z-40 pointer-events-auto"
+      style={{
+        transform: "translateY(-50%)",
+        width: expanded ? 340 : 42,
+        transition: "width 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+      }}
+    >
+      <div
+        className="bg-[#181818]/90 backdrop-blur-xl border border-[#333333] overflow-hidden"
+        style={{
+          borderRadius: expanded ? 10 : 21,
+          boxShadow: expanded ? "0 16px 48px rgba(0,0,0,0.5)" : "0 4px 12px rgba(0,0,0,0.3)",
+          transition: "border-radius 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s ease",
+        }}
+      >
+        {/* Collapsed pill — just the icon */}
+        <button
+          onClick={onToggle}
+          className="flex items-center justify-center w-full"
+          style={{
+            height: 42,
+            opacity: expanded ? 0 : 1,
+            pointerEvents: expanded ? "none" : "auto",
+            position: expanded ? "absolute" : "relative",
+            transition: "opacity 0.2s ease",
+          }}
+        >
+          <div className="relative flex items-center justify-center">
+            <Radio className="h-4 w-4 text-[#8899aa]" />
+            <div className={`absolute h-[5px] w-[5px] rounded-full ${isLive ? "bg-[#00ff88] animate-pulse" : "bg-[#556688]"}`} />
           </div>
-        </div>
-        <div className="space-y-1.5">
-          <StatRow label="Total trades" value={signalCount} />
-          <StatRow label="High signal" value={highEv} highlight />
-          <div className="pt-3 mt-3 border-t border-[#333333] space-y-1.5">
-            <div className="flex items-center justify-between">
+        </button>
+
+        {/* Expanded content */}
+        <div
+          style={{
+            opacity: expanded ? 1 : 0,
+            maxHeight: expanded ? "70vh" : 0,
+            transition: "opacity 0.3s ease 0.1s, max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+            overflow: "hidden",
+          }}
+        >
+          {/* Stats header */}
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#333333]">
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-[#44aaff] animate-pulse" />
-                <span className="text-xs uppercase tracking-wider text-[#44aaff]">Signal Scout</span>
+                <div className={`h-1.5 w-1.5 rounded-full ${isLive ? "bg-[#00ff88] animate-pulse" : "bg-[#556688]"}`} />
+                <span className="text-xs text-[#8899aa]">{isLive ? "LIVE" : "..."}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-[#99aabb]">Trades</span>
+                <span className="text-xs font-mono text-[#ccd0e0]">{signalCount}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-[#99aabb]">High</span>
+                <span className="text-xs font-mono text-[#00ff88]">{highEv}</span>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-[#556688] truncate">Click UFO to configure custom alerts</span>
-            </div>
+            <button
+              onClick={onToggle}
+              className="text-[#556688] hover:text-[#ccd0e0] transition-colors p-0.5"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Scout news feed */}
+          <div className="max-h-[55vh] overflow-y-auto">
+            <ScoutNotificationPanel
+              events={scoutEvents}
+              onDismiss={onDismiss}
+              onMarketClick={onMarketClick}
+              embedded
+            />
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-function StatRow({ label, value, highlight }: { label: string; value: string | number; highlight?: boolean }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-[#99aabb]">{label}</span>
-      <span className={`text-xs font-mono ${highlight ? "text-[#00ff88]" : "text-[#ccd0e0]"}`}>
-        {value}
-      </span>
     </div>
   )
 }
@@ -481,7 +523,7 @@ export function GalaxyScene() {
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set())
   const [customColors, setCustomColors] = useState<Record<string, string>>({})
   const [colorPickerTarget, setColorPickerTarget] = useState<{ name: string; x: number; y: number } | null>(null)
-  const [scoutMinimized, setScoutMinimized] = useState(false)
+  const [navExpanded, setNavExpanded] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
   const toggleCategory = useCallback((name: string) => {
@@ -560,7 +602,6 @@ export function GalaxyScene() {
         setCameraTarget(c.position)
         setFocusedConstellation(c.name)
         setSelectedStars([star])
-        setScoutMinimized(true)
         return
       }
     }
@@ -637,9 +678,6 @@ export function GalaxyScene() {
               Galaxy
             </button>
           )}
-          <h1 className="text-lg font-semibold tracking-tight text-[#ccd0e0] shrink-0">
-            POLYVERSE
-          </h1>
           {/* Search button */}
           <button
             onClick={() => setSearchOpen(true)}
@@ -651,8 +689,14 @@ export function GalaxyScene() {
         </div>
       </div>
 
-      {/* Agent stats */}
-      <AgentStatsOverlay onOpenConfig={handleUfoClick} />
+      {/* Agent nav bar — morphing pill/panel */}
+      <AgentNavBar
+        scoutEvents={scoutData?.events ?? []}
+        onDismiss={dismissEvent}
+        onMarketClick={handleNavigateToMarket}
+        expanded={navExpanded}
+        onToggle={() => setNavExpanded((v) => !v)}
+      />
 
       {/* Chart panel(s) for selected stars — stacked vertically on left, synced */}
       {focusedData && selectedStars.length > 0 && (
@@ -668,42 +712,6 @@ export function GalaxyScene() {
           onClose={() => setSelectedStars([])}
           scoutEvents={selectedScoutEvents}
         />
-      )}
-
-      {/* Scout notification panel — bottom-right, hidden in zoomed-in view */}
-      {!focusedConstellation && visibleScoutEvents.length > 0 && (
-        <div className={`absolute bottom-4 z-40 pointer-events-auto transition-all duration-300 ${selectedStars.length > 0 ? "right-[400px]" : "right-4"}`}>
-          {scoutMinimized ? (
-            <button
-              onClick={() => setScoutMinimized(false)}
-              className="flex items-center gap-2 bg-[#0a0a10]/90 backdrop-blur border border-[#2a2a3a] rounded-lg px-3 py-2 text-[#44aaff] hover:border-[#44aaff]/40 transition-colors"
-            >
-              <span className="text-[10px]">🛸</span>
-              <span className="text-[10px] uppercase tracking-wider">Signal Scout ({visibleScoutEvents.length})</span>
-              <ChevronUp className="h-3 w-3" />
-            </button>
-          ) : (
-            <div className="relative">
-              <div className="absolute top-2 right-3 z-10 flex items-center gap-1.5">
-                <span className="text-[9px] bg-[#44aaff]/20 text-[#44aaff] px-1.5 py-0.5 rounded-full font-mono">
-                  {visibleScoutEvents.length}
-                </span>
-                <button
-                  onClick={() => setScoutMinimized(true)}
-                  className="text-[#556688] hover:text-[#aabbcc] transition-colors"
-                  title="Minimize"
-                >
-                  <ChevronDown className="h-3 w-3" />
-                </button>
-              </div>
-              <ScoutNotificationPanel
-                events={visibleScoutEvents}
-                onDismiss={dismissEvent}
-                onMarketClick={handleNavigateToMarket}
-              />
-            </div>
-          )}
-        </div>
       )}
 
       {/* Market search modal */}
@@ -722,7 +730,7 @@ export function GalaxyScene() {
       {/* Category filter */}
       {cameraMode === "galaxy" && (
         <div style={{ position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", maxWidth: "60vw", zIndex: 40 }}>
-          <div className="bg-[#0d0d10]/60 backdrop-blur-sm border border-[#ffffff10] rounded-full px-4 py-1.5 flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
+          <div className="relative bg-[#0d0d10]/60 backdrop-blur-sm border border-[#ffffff10] rounded-full px-4 py-1.5 flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitMaskImage: "linear-gradient(90deg, transparent, black 24px, black calc(100% - 24px), transparent)", maskImage: "linear-gradient(90deg, transparent, black 24px, black calc(100% - 24px), transparent)" } as React.CSSProperties}>
             {galaxyData.constellations.map((c) => {
               const hidden = hiddenCategories.has(c.name)
               const color = getColor(c.name)
