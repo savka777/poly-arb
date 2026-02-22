@@ -175,7 +175,7 @@ function computeStarSize(volume: number, allVolumes: number[]): number {
   const sorted = [...allVolumes].sort((a, b) => a - b)
   const rank = sorted.indexOf(volume)
   const pct = allVolumes.length > 1 ? rank / (allVolumes.length - 1) : 0.5
-  return 0.12 + pct * 0.6
+  return 0.18 + pct * 0.8
 }
 
 function computeFreshness(createdAt: string): number {
@@ -305,21 +305,121 @@ function seededRandom(seed: number): () => number {
   }
 }
 
-function scatteredPosition(
-  index: number,
-  _total: number,
+// Extract meaningful keywords from a market question
+export function extractKeywords(question: string): Set<string> {
+  const stopWords = new Set([
+    "the", "a", "an", "is", "are", "was", "were", "be", "been", "will", "would",
+    "could", "should", "do", "does", "did", "has", "have", "had", "in", "on", "at",
+    "to", "for", "of", "with", "by", "from", "or", "and", "not", "no", "yes",
+    "this", "that", "it", "its", "they", "their", "he", "she", "his", "her",
+    "what", "which", "who", "whom", "how", "when", "where", "why", "if", "than",
+    "more", "most", "any", "all", "each", "every", "both", "few", "many", "much",
+    "before", "after", "above", "below", "between", "during", "about", "into",
+    "through", "over", "under", "up", "down", "out", "off", "then", "so", "but",
+    "just", "also", "very", "can", "may", "might", "shall", "must", "being",
+    "get", "got", "make", "go", "come", "take", "give", "know", "think", "say",
+    "see", "find", "here", "there", "new", "old", "first", "last", "next",
+  ])
+  return new Set(
+    question.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !stopWords.has(w))
+  )
+}
+
+// Compute keyword overlap between two markets (0-1)
+export function keywordSimilarity(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0
+  let overlap = 0
+  for (const w of a) {
+    if (b.has(w)) overlap++
+  }
+  return overlap / Math.min(a.size, b.size)
+}
+
+// Position stars so keyword-similar markets cluster together
+// Uses a simple force-directed approach: start with seeded random positions,
+// then pull similar markets closer and push dissimilar ones apart
+function computeClusterPositions(
+  markets: { question: string }[],
   radius: number,
   seed: number,
-): [number, number, number] {
-  const rng = seededRandom(seed + index * 7919)
-  const theta = rng() * Math.PI * 2
-  const phi = Math.acos(2 * rng() - 1)
-  const r = radius * (0.3 + rng() * 0.7)
-  return [
-    Math.sin(phi) * Math.cos(theta) * r,
-    Math.sin(phi) * Math.sin(theta) * r * 0.4,
-    Math.cos(phi) * r,
-  ]
+): [number, number, number][] {
+  const n = markets.length
+  if (n === 0) return []
+
+  // Extract keywords for all markets
+  const keywords = markets.map((m) => extractKeywords(m.question))
+
+  // Start with seeded random positions — use cube root for volume-uniform
+  // distribution so stars aren't all clumped in the center
+  const positions: [number, number, number][] = []
+  for (let i = 0; i < n; i++) {
+    const rng = seededRandom(seed + i * 7919)
+    const theta = rng() * Math.PI * 2
+    const phi = Math.acos(2 * rng() - 1)
+    // Cube root gives uniform volume distribution; high minimum keeps stars out of center
+    const r = radius * (0.45 + 0.55 * Math.cbrt(rng()))
+    positions.push([
+      Math.sin(phi) * Math.cos(theta) * r,
+      Math.sin(phi) * Math.sin(theta) * r * 0.4,
+      Math.cos(phi) * r,
+    ])
+  }
+
+  // Run a few iterations of spring-like forces
+  // Weaken attraction for large groups so they don't collapse to center
+  const iterations = 8
+  const attractStrength = n > 80 ? 0.04 : n > 40 ? 0.08 : 0.15
+  const repelStrength = 0.4
+  const minDist = radius * 0.12
+
+  for (let iter = 0; iter < iterations; iter++) {
+    const forces: [number, number, number][] = positions.map(() => [0, 0, 0])
+
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const dx = positions[j][0] - positions[i][0]
+        const dy = positions[j][1] - positions[i][1]
+        const dz = positions[j][2] - positions[i][2]
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.01
+        const sim = keywordSimilarity(keywords[i], keywords[j])
+
+        if (sim > 0.2) {
+          // Attract similar markets
+          const f = attractStrength * sim / Math.max(dist, 0.1)
+          forces[i][0] += dx * f; forces[i][1] += dy * f; forces[i][2] += dz * f
+          forces[j][0] -= dx * f; forces[j][1] -= dy * f; forces[j][2] -= dz * f
+        }
+
+        // Repel if too close
+        if (dist < minDist) {
+          const f = repelStrength * (minDist - dist) / dist
+          forces[i][0] -= dx * f; forces[i][1] -= dy * f; forces[i][2] -= dz * f
+          forces[j][0] += dx * f; forces[j][1] += dy * f; forces[j][2] += dz * f
+        }
+      }
+    }
+
+    // Apply forces with damping
+    const damping = 0.5
+    for (let i = 0; i < n; i++) {
+      positions[i][0] += forces[i][0] * damping
+      positions[i][1] += forces[i][1] * damping
+      positions[i][2] += forces[i][2] * damping
+      // Clamp to cluster radius
+      const r = Math.sqrt(positions[i][0] ** 2 + positions[i][1] ** 2 + positions[i][2] ** 2)
+      if (r > radius) {
+        const scale = radius / r
+        positions[i][0] *= scale
+        positions[i][1] *= scale
+        positions[i][2] *= scale
+      }
+    }
+  }
+
+  return positions
 }
 
 export function useGalaxyData(): GalaxyData {
@@ -357,12 +457,15 @@ export function useGalaxyData(): GalaxyData {
     for (const [name, catMarkets] of groups) {
       const center = CATEGORY_POSITIONS[name] ?? [0, 0, 0]
       const colors = CATEGORY_COLORS[name] ?? CATEGORY_COLORS.other
-      const clusterRadius = Math.min(6 + catMarkets.length * 0.5, 18)
+      // sqrt scaling: radius grows proportionally but capped
+      // ~10 trades → ~7, ~40 trades → ~10, ~100 trades → ~13, ~200 trades → ~16
+      const clusterRadius = Math.min(4 + Math.sqrt(catMarkets.length) * 0.9, 18)
       const catSeed = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) * 31
 
+      const clusterPositions = computeClusterPositions(catMarkets, clusterRadius, catSeed)
       const stars: StarData[] = catMarkets.map((market, i) => {
         const signal = signalMap.get(market.id)
-        const local = scatteredPosition(i, catMarkets.length, clusterRadius, catSeed)
+        const local = clusterPositions[i] ?? [0, 0, 0]
         return {
           market,
           signal,

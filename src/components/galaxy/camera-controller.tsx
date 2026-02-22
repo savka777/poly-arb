@@ -11,13 +11,14 @@ export type CameraMode = "galaxy" | "constellation"
 interface CameraControllerProps {
   mode: CameraMode
   target: [number, number, number]
+  starCount?: number
 }
 
 const GALAXY_POS = new THREE.Vector3(0, 15, 80)
 const GALAXY_TARGET = new THREE.Vector3(0, 0, 0)
 const LERP_SPEED = 2.4
 
-export function CameraController({ mode, target }: CameraControllerProps) {
+export function CameraController({ mode, target, starCount = 0 }: CameraControllerProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null)
   const { camera } = useThree()
 
@@ -34,7 +35,7 @@ export function CameraController({ mode, target }: CameraControllerProps) {
       targetLook.current.set(target[0], target[1], target[2])
     }
     isAnimating.current = true
-  }, [mode, target])
+  }, [mode, target, starCount])
 
   useFrame((_, delta) => {
     if (!isAnimating.current) return

@@ -5,12 +5,14 @@ import * as THREE from "three"
 import { Billboard, Text, Html } from "@react-three/drei"
 import { useFrame, useThree } from "@react-three/fiber"
 import { ParticleCloud } from "./particle-cloud"
+import { ConnectionBeams } from "./connection-beams"
 import { getGlowTexture } from "./glow-texture"
 import type { ConstellationData, StarData } from "@/hooks/use-galaxy-data"
 
 interface GalaxyViewProps {
   constellations: ConstellationData[]
   focusedConstellation: string | null
+  selectedStars: StarData[]
   mousePos: THREE.Vector3
   onConstellationClick: (constellation: ConstellationData) => void
   onStarClick: (star: StarData) => void
@@ -172,11 +174,12 @@ function StarHoverCard({ star }: { star: StarData }) {
   )
 }
 
-function MarketStar({ star, center, onStarClick, hovered, onHover, onUnhover }: {
+function MarketStar({ star, center, onStarClick, hovered, selected, onHover, onUnhover }: {
   star: StarData
   center: [number, number, number]
   onStarClick: (star: StarData) => void
   hovered: boolean
+  selected: boolean
   onHover: () => void
   onUnhover: () => void
 }) {
@@ -186,7 +189,7 @@ function MarketStar({ star, center, onStarClick, hovered, onHover, onUnhover }: 
     center[2] + star.localPosition[2],
   ]
 
-  const glowSize = star.size * 1.6 * (hovered ? 1.5 : 1)
+  const glowSize = star.size * 1.6 * (hovered ? 1.5 : selected ? 1.3 : 1)
   const color = useMemo(() => new THREE.Color(star.color), [star.color])
 
   return (
@@ -328,6 +331,7 @@ function DistanceLabel({
 export function GalaxyView({
   constellations,
   focusedConstellation,
+  selectedStars,
   mousePos,
   onConstellationClick,
   onStarClick,
@@ -364,10 +368,20 @@ export function GalaxyView({
                 center={c.position}
                 onStarClick={onStarClick}
                 hovered={hoveredStarId === star.market.id}
+                selected={selectedStars.some((s) => s.market.id === star.market.id)}
                 onHover={() => setHoveredStarId(star.market.id)}
                 onUnhover={() => setHoveredStarId((prev) => prev === star.market.id ? null : prev)}
               />
             ))}
+
+            {/* Connection beams from selected stars */}
+            {focused && selectedStars.length > 0 && (
+              <ConnectionBeams
+                selectedStars={selectedStars}
+                allStars={c.stars}
+                center={c.position}
+              />
+            )}
 
             {/* Clickable hit area — only when not focused */}
             {!focused && (

@@ -85,7 +85,7 @@ function AgentStatsOverlay({ onOpenConfig }: { onOpenConfig: () => void }) {
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-[#556688] truncate">Click UFO to configure scout</span>
+              <span className="text-[10px] text-[#556688] truncate">Click UFO to configure custom alerts</span>
             </div>
           </div>
         </div>
@@ -270,21 +270,25 @@ function ScoutConfigPanel({ onClose }: { onClose: () => void }) {
 function SceneContent({
   constellations,
   focusedConstellation,
+  selectedStars,
   cameraMode,
   cameraTarget,
   mousePos,
   onConstellationClick,
   onStarClick,
   onUfoClick,
+  focusedStarCount,
 }: {
   constellations: ConstellationData[]
   focusedConstellation: string | null
+  selectedStars: StarData[]
   cameraMode: CameraMode
   cameraTarget: [number, number, number]
   mousePos: React.MutableRefObject<THREE.Vector3>
   onConstellationClick: (constellation: ConstellationData) => void
   onStarClick: (star: StarData) => void
   onUfoClick: () => void
+  focusedStarCount: number
 }) {
   return (
     <>
@@ -295,13 +299,14 @@ function SceneContent({
         <GalaxyView
           constellations={constellations}
           focusedConstellation={focusedConstellation}
+          selectedStars={selectedStars}
           mousePos={mousePos.current}
           onConstellationClick={onConstellationClick}
           onStarClick={onStarClick}
         />
       )}
       <Ufo constellations={constellations} onUfoClick={onUfoClick} />
-      <CameraController mode={cameraMode} target={cameraTarget} />
+      <CameraController mode={cameraMode} target={cameraTarget} starCount={focusedStarCount} />
     </>
   )
 }
@@ -393,7 +398,7 @@ export function GalaxyScene() {
   const [cameraMode, setCameraMode] = useState<CameraMode>("galaxy")
   const [cameraTarget, setCameraTarget] = useState<[number, number, number]>([0, 0, 0])
   const [focusedConstellation, setFocusedConstellation] = useState<string | null>(null)
-  const [selectedStar, setSelectedStar] = useState<StarData | null>(null)
+  const [selectedStars, setSelectedStars] = useState<StarData[]>([])
   const [scoutConfigOpen, setScoutConfigOpen] = useState(false)
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set())
   const [customColors, setCustomColors] = useState<Record<string, string>>({})
@@ -437,17 +442,22 @@ export function GalaxyScene() {
     setCameraMode("constellation")
     setCameraTarget(constellation.position)
     setFocusedConstellation(constellation.name)
-    setSelectedStar(null)
+    setSelectedStars([])
   }, [])
 
   const handleBackToGalaxy = useCallback(() => {
     setCameraMode("galaxy")
     setFocusedConstellation(null)
-    setSelectedStar(null)
+    setSelectedStars([])
   }, [])
 
   const handleStarClick = useCallback((star: StarData) => {
-    setSelectedStar(star)
+    setSelectedStars((prev) => {
+      const exists = prev.find((s) => s.market.id === star.market.id)
+      if (exists) return prev.filter((s) => s.market.id !== star.market.id)
+      if (prev.length >= 2) return [prev[1], star]
+      return [...prev, star]
+    })
   }, [])
 
   const handleUfoClick = useCallback(() => {
@@ -469,12 +479,14 @@ export function GalaxyScene() {
           <SceneContent
             constellations={filteredConstellations}
             focusedConstellation={focusedConstellation}
+            selectedStars={selectedStars}
             cameraMode={cameraMode}
             cameraTarget={cameraTarget}
             mousePos={mousePos}
             onConstellationClick={handleConstellationClick}
             onStarClick={handleStarClick}
             onUfoClick={handleUfoClick}
+            focusedStarCount={focusedData?.stars.length ?? 0}
           />
         </Suspense>
       </Canvas>
@@ -527,7 +539,7 @@ export function GalaxyScene() {
           {!tradesCollapsed && (
             <div className="flex flex-col gap-2 w-full h-full">
               {/* Market list */}
-              <div className={`bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg overflow-y-auto ${selectedStar ? "flex-1 min-h-0" : "h-full"}`}>
+              <div className={`bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg overflow-y-auto ${selectedStars.length > 0 ? "flex-1 min-h-0" : "h-full"}`}>
                 <div className="px-3 py-2 border-b border-[#333333] sticky top-0 bg-[#181818]/95">
                   <span className="text-xs uppercase tracking-wider text-[#8899aa]">
                     {focusedData.stars.length} Trades
@@ -538,9 +550,9 @@ export function GalaxyScene() {
                   .map((star) => (
                     <button
                       key={star.market.id}
-                      onClick={() => setSelectedStar(star)}
+                      onClick={() => handleStarClick(star)}
                       className={`w-full text-left px-3 py-2 border-b border-[#2a2a2a] hover:bg-[#222222] transition-colors ${
-                        selectedStar?.market.id === star.market.id ? "bg-[#222222]" : ""
+                        selectedStars.some((s) => s.market.id === star.market.id) ? "bg-[#222222]" : ""
                       }`}
                     >
                       <p className="text-sm text-[#ccd0e0] leading-tight truncate">
@@ -564,23 +576,25 @@ export function GalaxyScene() {
                   ))}
               </div>
 
-              {/* Chart panel */}
-              {selectedStar && <MarketChart star={selectedStar} />}
+              {/* Chart panel(s) */}
+              {selectedStars.map((s) => (
+                <MarketChart key={s.market.id} star={s} />
+              ))}
             </div>
           )}
         </div>
       )}
 
-      {/* Detail panel */}
-      {selectedStar && (
+      {/* Detail panel — show for first selected star */}
+      {selectedStars.length > 0 && (
         <StarDetailPanel
-          star={selectedStar}
-          onClose={() => setSelectedStar(null)}
+          star={selectedStars[0]}
+          onClose={() => setSelectedStars([])}
         />
       )}
 
       {/* Scout notification panel — bottom-right, hidden when star detail is open */}
-      {!selectedStar && scoutData?.events && scoutData.events.length > 0 && (
+      {selectedStars.length === 0 && scoutData?.events && scoutData.events.length > 0 && (
         <div className="absolute bottom-4 right-4 z-40 pointer-events-auto">
           <ScoutNotificationPanel
             events={scoutData.events}
@@ -628,7 +642,7 @@ export function GalaxyScene() {
           <div className="flex items-center gap-4 text-xs text-[#8899aa]">
             <span>Cloud density = market count</span>
             <span>Brightness = signal strength</span>
-            <span>Click UFO to configure scout</span>
+            <span>Click UFO to configure custom alerts</span>
           </div>
         </div>
       </div>
