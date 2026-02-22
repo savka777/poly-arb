@@ -22,6 +22,7 @@ import type { IChartApi, UTCTimestamp, LogicalRange } from "lightweight-charts"
 import { ArrowLeft, Loader2, X, Search, ChevronUp, ChevronDown } from "lucide-react"
 import { useMarkets } from "@/hooks/use-markets"
 import { MarketSearchModal } from "@/components/market-search-modal"
+import { AlphaTicker } from "@/components/alpha-ticker"
 
 // Invisible plane for raycasting mouse position into 3D space
 function MouseTracker({ mousePos }: { mousePos: React.MutableRefObject<THREE.Vector3> }) {
@@ -741,16 +742,9 @@ export function GalaxyScene() {
         </div>
       )}
 
-      {/* Legend */}
-      <div style={{ position: "absolute", bottom: 16, left: 16, zIndex: 40, pointerEvents: "none" }}>
-        <div className="bg-[#181818]/60 backdrop-blur border border-[#333333] rounded px-3 py-2">
-          <div className="flex items-center gap-4 text-xs text-[#8899aa]">
-            <span>Cloud density = market count</span>
-            <span>Brightness = signal strength</span>
-            <span>Click UFO to configure custom alerts</span>
-          </div>
-        </div>
-      </div>
+      {/* Alpha ticker banner */}
+      <AlphaTicker />
+
 
       {/* Color picker */}
       {colorPickerTarget && (

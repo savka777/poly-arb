@@ -44,3 +44,6 @@ next-env.d.ts
 darwin.db
 darwin.db-shm
 darwin.db-wal
+
+# solana local validator
+test-ledger/
