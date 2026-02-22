@@ -12,6 +12,7 @@ import {
   stopPriceWatcher,
   getPriceWatcherStatus,
   getTrackedMarkets,
+  setTrackedMarkets,
   type PriceChange,
 } from './watchers/price-watcher';
 import {
@@ -35,6 +36,11 @@ import {
   updateRssActiveMarkets,
   type RssMatch,
 } from './watchers/rss-watcher';
+import {
+  startPolymarketWS,
+  stopPolymarketWS,
+  subscribeMarkets,
+} from '@/data/polymarket-ws';
 
 // ─── Priority Queue ─────────────────────────────────────────────────────────
 
@@ -342,7 +348,17 @@ export function startOrchestrator(): void {
         updateActiveMarkets(allMarkets);
         updateTrackedMarkets(allMarkets);
         updateRssActiveMarkets(allMarkets);
+        setTrackedMarkets(allMarkets);
         logActivity('orchestrator', 'info', `Seeded watchers with ${allMarkets.length} markets from SQLite`);
+
+        // Start WebSocket with all known token IDs
+        const tokenIds = allMarkets
+          .map((m) => m.clobTokenId)
+          .filter((id): id is string => !!id);
+        if (tokenIds.length > 0) {
+          startPolymarketWS(tokenIds);
+          logActivity('orchestrator', 'info', `WebSocket started with ${tokenIds.length} tokens`);
+        }
       }
     })
     .catch((e) => {
@@ -365,6 +381,15 @@ export function startOrchestrator(): void {
           updateActiveMarkets(allMarkets);
           updateTrackedMarkets(allMarkets);
           updateRssActiveMarkets(allMarkets);
+          setTrackedMarkets(allMarkets);
+
+          // Subscribe any new tokens to the WebSocket
+          const tokenIds = allMarkets
+            .map((m) => m.clobTokenId)
+            .filter((id): id is string => !!id);
+          if (tokenIds.length > 0) {
+            subscribeMarkets(tokenIds);
+          }
         }
       })
       .catch((e) => {
@@ -386,6 +411,7 @@ export function stopOrchestrator(): void {
   stopNewsWatcher();
   stopTimeWatcher();
   stopRssWatcher();
+  stopPolymarketWS();
   if (state.syncHandle) {
     clearInterval(state.syncHandle);
     state.syncHandle = null;

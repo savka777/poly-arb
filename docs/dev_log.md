@@ -4,6 +4,80 @@
 > Read the latest entries before starting any work — this is how session N+1 knows what session N did.
 > Newest entries first.
 
+## [2026-02-21 XX:XX] Logic & Utility Audit — Time Feature Bug Fix
+
+### What Changed
+- **Fixed:** `src/intelligence/calculations.ts` — `timeFeature()` had a directional bug. It returned a constant negative value (`-1/(1 + daysLeft/30)`) regardless of signal direction. This meant:
+  - Bullish signals (zNews > 0): time feature correctly pulled pHat back toward market. OK.
+  - Bearish signals (zNews < 0): time feature pushed pHat FURTHER below market — amplifying the bearish signal near expiry instead of dampening it. BUG.
+  - Fix: `timeFeature` now takes `zNews` as input and returns `-zNews * decay`. This always opposes the news shift, so both bullish and bearish signals decay symmetrically toward market price as expiry approaches.
+  - Combined formula: `logitPHat = logit(pM) + zNews * (W_NEWS - W_TIME * decay)`. Net news weight decreases from 0.4 (far from expiry) to 0.1 (at expiry).
+- **Fixed:** `src/app/compare/page.tsx` — wrapped `useSearchParams()` in `<Suspense>` boundary (Next.js 16 requirement). Build was failing on `/compare` route.
+- **Added:** `nanoid` as explicit dependency (was transitive only).
+
+### Audit Findings (no code changes needed)
+- `src/scanner/index.ts` — dead code, not imported anywhere (superseded by orchestrator)
+- `src/scanner/news-monitor.ts` — dead code, not imported anywhere (not started by health route)
+- `MOCK_SIGNALS`, `MOCK_TOOL_CALLS` in `src/lib/mock-data.ts` — not imported by any module
+- `config.evThreshold` — defined but not used in any gate logic (superseded by `tradeable`)
+- `config.anthropicApiKey` — vestigial, never read by any module
+- News monitor + orchestrator have no shared lock — both can trigger `runEventPod()` on same market (moot since news monitor is never started)
+- Watchlist has no effect on orchestrator scanning priority (only affected legacy scanner)
+- Orchestrator starts from health endpoint — no scanning until `/api/health` is hit
+
+### Decisions Made
+- **Fix the math, don't refactor the architecture** — the time feature fix is surgical (2 lines changed). The logit-space combination framework is sound; only the time decay direction was wrong.
+- **Don't delete dead code** — scanner/index.ts, news-monitor.ts, mock data are harmless and serve as reference.
+
+### Known Issues
+- `Signal.source` field is never set by `generateSignalNode`
+- Watchlist doesn't affect orchestrator priority (only legacy scanner had this)
+- Orchestrator startup still tied to health endpoint
+
+### Next Up
+- Wire `Signal.source` through `generateSignalNode`
+- Move orchestrator startup to Next.js instrumentation file
+- Consider deleting dead scanner/news-monitor files
+
+---
+
+## [2026-02-21 XX:XX] Braintrust Observability for LLM Calls
+
+### What Changed
+- **Created:** `src/lib/braintrust.ts` — single integration point for Braintrust tracing. Initializes `initLogger({ projectName: "darwin-capital" })` and wraps the Vercel AI SDK via `wrapAISDK(ai)`. Exports `tracedGenerateObject()` which returns a traced `generateObject`. Falls back to unwrapped `ai.generateObject` when `BRAINTRUST_API_KEY` is not set.
+- **Modified:** `src/agent/nodes.ts` — replaced `import { generateObject } from 'ai'` with `import { tracedGenerateObject } from '@/lib/braintrust'`. Call site changed to `tracedGenerateObject()({ model, schema, ... })`.
+- **Modified:** `src/intelligence/market-matcher.ts` — same pattern: replaced direct `generateObject` import with `tracedGenerateObject()` from braintrust module.
+- **Modified:** `src/lib/config.ts` — added `braintrustApiKey` field.
+- **Modified:** `.env.example` — added `BRAINTRUST_API_KEY=` entry under External APIs.
+- **Modified:** `CLAUDE.md` — added Braintrust to stack, updated LLM calls section, added env var, added file to structure.
+- **Added dependency:** `braintrust` npm package.
+
+### Decisions Made
+- **Wrapper pattern, not direct replacement** — `tracedGenerateObject()` is a function that returns `generateObject` (traced or not). This keeps the call site minimal (`tracedGenerateObject()({...})`) and centralizes the init logic.
+- **Graceful fallback** — if `BRAINTRUST_API_KEY` is not set, the system uses the unwrapped `ai.generateObject` directly. No errors, no warnings, identical behavior to before. This means the integration is zero-cost for devs who don't have a Braintrust account.
+- **Lazy init** — Braintrust logger is only initialized on the first `tracedGenerateObject()` call, not at module import. Avoids side effects during build or if the module is imported but never used.
+- **Two call sites only** — the only places in the codebase that call `generateObject` are `nodes.ts` (probability estimation) and `market-matcher.ts` (news-to-market matching). Both are now traced.
+
+### Current Application State
+- **Full pipeline operational:** Polymarket market sync → RSS/news watcher → orchestrator dispatches analysis → Event Pod agent (fetchNews → estimateProbability → calculateDivergence → generateSignal) → signals persisted to SQLite → served via API routes → React Query polling → UI grid + detail pages.
+- **Three watchers feed the orchestrator:** price-watcher (>2% change), news-watcher (keyword match → LLM match), time-watcher (near-expiry <7d). Priority queue with per-market locks and adaptive cooldowns.
+- **EV engine:** Bayesian logit-space combination (market price as prior, LLM estimate as feature). Cost-aware net EV with fee/slippage/resolution-risk/latency-decay. Only lower-bound-positive signals marked tradeable.
+- **UI:** Market grid with filters (search, category pills, sort, signal filter), market detail with TradingView-grade charts (line/candle/area, OHLC header, fair value overlay), compare page with drag-and-drop slots, toggleable analysis panel, watchlist, news ticker + feed panel.
+- **Observability:** LLM calls now optionally traced via Braintrust (prompts, responses, latency visible in dashboard when API key set).
+- **TypeScript:** `npx tsc --noEmit` passes with zero errors.
+
+### Known Issues
+- Orchestrator starts from health endpoint (should move to Next.js instrumentation file)
+- Old `scanner/index.ts` and `scanner/news-monitor.ts` files are orphaned (superseded by orchestrator + watchers)
+- `Signal.source` field exists on type but `generateSignalNode` doesn't set it
+
+### Next Up
+- Set `BRAINTRUST_API_KEY` and verify traces appear in dashboard
+- Move orchestrator startup to instrumentation file
+- Add CLOB live price fetching before EV calculation
+
+---
+
 ## [2026-02-21 XX:XX] Claude Opus 4.6
 
 ### What Changed

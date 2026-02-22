@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { generateObject } from 'ai';
+import { tracedGenerateObject } from '@/lib/braintrust';
 import { nanoid } from 'nanoid';
 import { model } from '@/lib/model';
 import { config } from '@/lib/config';
@@ -94,7 +94,7 @@ Respond with:
 - keyFactors: array of 2-4 key factors influencing your estimate`;
 
   try {
-    const { object } = await generateObject({
+    const { object } = await tracedGenerateObject()({
       model,
       schema: probabilityEstimateSchema,
       system: systemPrompt,

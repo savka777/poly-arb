@@ -1,6 +1,6 @@
-import { fetchTrendingMarkets } from '@/data/polymarket';
 import { logActivity } from '@/store/activity-log';
 import { config } from '@/lib/config';
+import { onUpdate } from '@/data/polymarket-ws';
 import type { Market } from '@/lib/types';
 
 export interface PriceChange {
@@ -14,58 +14,19 @@ interface PriceWatcherState {
   running: boolean;
   prices: Map<string, number>;
   markets: Map<string, Market>;
-  intervalHandle: ReturnType<typeof setInterval> | null;
+  unsubscribeWs: (() => void) | null;
 }
 
 const state: PriceWatcherState = {
   running: false,
   prices: new Map(),
   markets: new Map(),
-  intervalHandle: null,
+  unsubscribeWs: null,
 };
 
 export type PriceChangeCallback = (changes: PriceChange[]) => void;
 
 let onChangeCallback: PriceChangeCallback | null = null;
-
-async function pollPrices(): Promise<void> {
-  const result = await fetchTrendingMarkets({
-    limit: config.scanner.marketsPerCycle,
-    pages: 2,
-  });
-
-  if (!result.ok) {
-    logActivity('price-watcher', 'error', `Failed to fetch markets: ${result.error}`);
-    return;
-  }
-
-  const changes: PriceChange[] = [];
-
-  for (const market of result.data) {
-    const previous = state.prices.get(market.id);
-    state.markets.set(market.id, market);
-
-    if (previous !== undefined) {
-      const changeMagnitude = Math.abs(market.probability - previous);
-      if (changeMagnitude >= config.orchestrator.priceChangeThreshold) {
-        changes.push({
-          market,
-          previousPrice: previous,
-          currentPrice: market.probability,
-          changeMagnitude,
-        });
-      }
-    }
-
-    state.prices.set(market.id, market.probability);
-  }
-
-  if (changes.length > 0) {
-    onChangeCallback?.(changes);
-  } else {
-    logActivity('price-watcher', 'info', `Polled ${result.data.length} markets, no significant changes`);
-  }
-}
 
 export function startPriceWatcher(callback: PriceChangeCallback): void {
   if (state.running) return;
@@ -76,27 +37,49 @@ export function startPriceWatcher(callback: PriceChangeCallback): void {
   logActivity(
     'price-watcher',
     'info',
-    `Starting (interval: ${config.orchestrator.priceWatchIntervalMs}ms, threshold: ${(config.orchestrator.priceChangeThreshold * 100).toFixed(0)}%)`,
+    `Starting (WebSocket mode, threshold: ${(config.orchestrator.priceChangeThreshold * 100).toFixed(0)}%)`,
   );
 
-  // Initial poll after short delay
-  setTimeout(() => {
-    pollPrices().catch((e) =>
-      logActivity('price-watcher', 'error', `Poll error: ${e instanceof Error ? e.message : String(e)}`),
-    );
-  }, 2_000);
+  // Listen for live WebSocket updates instead of polling
+  state.unsubscribeWs = onUpdate((update) => {
+    if (!state.running || !onChangeCallback) return;
 
-  state.intervalHandle = setInterval(() => {
-    pollPrices().catch((e) =>
-      logActivity('price-watcher', 'error', `Poll error: ${e instanceof Error ? e.message : String(e)}`),
-    );
-  }, config.orchestrator.priceWatchIntervalMs);
+    const tokenId = update.tokenId;
+    const newPrice = update.data.price;
+    if (!newPrice || newPrice <= 0) return;
+
+    // Find the market associated with this token
+    let matchedMarket: Market | undefined;
+    for (const market of state.markets.values()) {
+      if (market.clobTokenId === tokenId) {
+        matchedMarket = market;
+        break;
+      }
+    }
+
+    if (!matchedMarket) return;
+
+    const previous = state.prices.get(matchedMarket.id);
+    state.prices.set(matchedMarket.id, newPrice);
+
+    if (previous !== undefined) {
+      const changeMagnitude = Math.abs(newPrice - previous);
+      if (changeMagnitude >= config.orchestrator.priceChangeThreshold) {
+        onChangeCallback([{
+          market: matchedMarket,
+          previousPrice: previous,
+          currentPrice: newPrice,
+          changeMagnitude,
+        }]);
+      }
+    }
+  });
 }
 
 export function stopPriceWatcher(): void {
-  if (state.intervalHandle) {
-    clearInterval(state.intervalHandle);
-    state.intervalHandle = null;
+  if (state.unsubscribeWs) {
+    state.unsubscribeWs();
+    state.unsubscribeWs = null;
   }
   state.running = false;
   onChangeCallback = null;
@@ -109,10 +92,22 @@ export function getPriceWatcherStatus(): {
 } {
   return {
     running: state.running,
-    trackedMarkets: state.prices.size,
+    trackedMarkets: state.markets.size,
   };
 }
 
 export function getTrackedMarkets(): Market[] {
   return Array.from(state.markets.values());
+}
+
+/** Update the set of markets being tracked for price changes. */
+export function setTrackedMarkets(markets: Market[]): void {
+  state.markets.clear();
+  for (const market of markets) {
+    state.markets.set(market.id, market);
+    // Seed initial price if we don't have one
+    if (!state.prices.has(market.id)) {
+      state.prices.set(market.id, market.probability);
+    }
+  }
 }

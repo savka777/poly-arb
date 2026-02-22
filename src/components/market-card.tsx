@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Star } from "lucide-react"
+import { ExternalLink, Star } from "lucide-react"
 import type { Market, Signal } from "@/lib/types"
 import { AlphaBar } from "./alpha-bar"
 import { SignalBadge } from "./signal-badge"
@@ -56,7 +56,16 @@ export function MarketCard({ market, signal, loading, watchlisted }: MarketCardP
               <Star className="h-3.5 w-3.5 shrink-0 fill-yellow-500 text-yellow-500 mt-0.5" />
             )}
           </div>
-          <span className="label-caps mt-1 inline-block">POLYMARKET</span>
+          <a
+            href={market.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="label-caps mt-1 inline-flex items-center gap-1 text-darwin-text-muted hover:text-darwin-text transition-colors"
+          >
+            POLYMARKET
+            <ExternalLink className="h-2.5 w-2.5" />
+          </a>
         </div>
 
         <div className="space-y-1.5">
@@ -100,6 +109,12 @@ export function MarketCard({ market, signal, loading, watchlisted }: MarketCardP
           />
         ) : (
           <p className="text-xs text-darwin-text-muted">No signal</p>
+        )}
+
+        {hasSignal && signal.reasoning && (
+          <p className="text-[11px] leading-relaxed text-darwin-text-secondary line-clamp-3">
+            {signal.reasoning}
+          </p>
         )}
 
         {hasSignal && (

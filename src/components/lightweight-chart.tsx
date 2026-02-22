@@ -28,6 +28,21 @@ import type {
 
 export type { ChartDataPoint } from "@/lib/chart-types"
 
+/** Sort by time ascending and keep only the last value per timestamp */
+function dedupeByTime(points: ChartDataPoint[]): ChartDataPoint[] {
+  if (points.length <= 1) return points
+  const sorted = [...points].sort((a, b) => a.time - b.time)
+  const result: ChartDataPoint[] = [sorted[0]]
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].time === result[result.length - 1].time) {
+      result[result.length - 1] = sorted[i] // keep last value for duplicate time
+    } else {
+      result.push(sorted[i])
+    }
+  }
+  return result
+}
+
 interface LightweightChartProps {
   data: ChartDataPoint[]
   ohlcData?: OhlcDataPoint[]
@@ -381,8 +396,8 @@ export function LightweightChart({
     const { chartType: ct, lineColor: lc, darwinColor: dc, showVolume: sv, showDarwinEstimate: sde } =
       propsRef.current
 
-    const cleanData = data.filter(
-      (d) => Number.isFinite(d.time) && Number.isFinite(d.value)
+    const cleanData = dedupeByTime(
+      data.filter((d) => Number.isFinite(d.time) && Number.isFinite(d.value))
     )
 
     // Set data on the active series, hide others
@@ -486,8 +501,8 @@ export function LightweightChart({
 
     // Add or update each overlay
     for (const overlay of currentOverlays) {
-      const cleanData = overlay.data.filter(
-        (d) => Number.isFinite(d.time) && Number.isFinite(d.value)
+      const cleanData = dedupeByTime(
+        overlay.data.filter((d) => Number.isFinite(d.time) && Number.isFinite(d.value))
       )
 
       const existing = existingRefs.get(overlay.id)

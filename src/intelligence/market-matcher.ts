@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { generateObject } from 'ai';
+import { tracedGenerateObject } from '@/lib/braintrust';
 import { model } from '@/lib/model';
 import type { NewsResult, Market } from '@/lib/types';
 
@@ -51,7 +51,7 @@ For each match, provide:
 - reasoning: brief explanation of why this news affects this market`;
 
     try {
-      const { object } = await generateObject({
+      const { object } = await tracedGenerateObject()({
         model,
         schema: matchSchema,
         prompt,

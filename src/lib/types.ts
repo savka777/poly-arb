@@ -197,6 +197,25 @@ export interface AnalyzeResponse {
   toolCalls: ToolCallRecord[]
 }
 
+export interface LiveMarketData {
+  tokenId: string
+  price: number
+  bestBid: number | null
+  bestAsk: number | null
+  spread: number | null
+  lastTradePrice: number | null
+  lastTradeSize: number | null
+  lastTradeSide: string | null
+  updatedAt: number
+}
+
+export interface LiveUpdate {
+  type: 'price_change' | 'last_trade_price' | 'best_bid_ask' | 'book'
+  tokenId: string
+  data: LiveMarketData
+  timestamp: number
+}
+
 export interface ApiError {
   error: string
   status: number

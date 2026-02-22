@@ -20,6 +20,7 @@ export const config = {
   aiModel: env("AI_MODEL", "anthropic/claude-opus-4-6"),
   anthropicApiKey: env("ANTHROPIC_API_KEY", ""),
   valyuApiKey: env("VALYU_API_KEY", ""),
+  braintrustApiKey: env("BRAINTRUST_API_KEY", ""),
   pollIntervalMs: envInt("NEXT_PUBLIC_POLL_INTERVAL_MS", 15_000),
   cycleIntervalMs: envInt("CYCLE_INTERVAL_MS", 60_000),
   evThreshold: envFloat("EV_THRESHOLD", 0.02),

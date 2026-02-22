@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Plus, Link2, Link2Off, Columns3, Rows3, LayoutGrid, PanelRightOpen, PanelRightClose } from "lucide-react"
@@ -55,6 +55,18 @@ type ModalMode =
   | null
 
 export default function ComparePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center bg-darwin-bg">
+        <span className="text-xs text-darwin-text-muted animate-pulse">Loading...</span>
+      </div>
+    }>
+      <ComparePageInner />
+    </Suspense>
+  )
+}
+
+function ComparePageInner() {
   const searchParams = useSearchParams()
   const { data: marketsData, isLoading: marketsLoading } = useMarkets()
   const { data: signalsData } = useSignals()

@@ -25,11 +25,15 @@ function newsFeature(llmEstimate: number, marketPrice: number): number {
   return logit(llmEstimate) - logit(marketPrice);
 }
 
-/** Negative feature that pulls estimate toward market price as expiry approaches */
-function timeFeature(endDate: string): number {
+/** Opposes the news shift, scaled by proximity to expiry.
+ *  Near expiry the market has had more time to incorporate info, so our edge shrinks.
+ *  Returns -zNews * decay so the pull is always *toward* the market price
+ *  regardless of whether the signal is bullish or bearish. */
+function timeFeature(endDate: string, zNews: number): number {
   const msLeft = new Date(endDate).getTime() - Date.now();
   const daysLeft = Math.max(msLeft / 86_400_000, 0);
-  return -1 / (1 + daysLeft / 30);
+  const decay = 1 / (1 + daysLeft / 30);
+  return -zNews * decay;
 }
 
 // ── Feature weights (configurable via env) ──────────────────────
@@ -82,7 +86,7 @@ export function calculateNetEV(params: {
 
   // 1. Compute features
   const zNews = newsFeature(llmEstimate, marketPrice);
-  const zTime = timeFeature(endDate);
+  const zTime = timeFeature(endDate, zNews);
 
   // 2. Combine in logit space
   const logitMarket = logit(marketPrice);
