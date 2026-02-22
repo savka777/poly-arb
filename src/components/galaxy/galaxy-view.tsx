@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef } from "react"
 import * as THREE from "three"
-import { Billboard, Text } from "@react-three/drei"
+import { Billboard, Text, Html } from "@react-three/drei"
 import { useFrame, useThree } from "@react-three/fiber"
 import { ParticleCloud } from "./particle-cloud"
 import { getGlowTexture } from "./glow-texture"
@@ -14,6 +14,162 @@ interface GalaxyViewProps {
   mousePos: THREE.Vector3
   onConstellationClick: (constellation: ConstellationData) => void
   onStarClick: (star: StarData) => void
+}
+
+function StarHoverCard({ star }: { star: StarData }) {
+  const yesPct = star.market.probability * 100
+  const noPct = (1 - star.market.probability) * 100
+  const darwinPct = star.signal ? star.signal.darwinEstimate * 100 : null
+  const ev = star.signal?.ev ?? 0
+
+  return (
+    <div
+      style={{
+        width: 320,
+        background: "rgba(24, 24, 24, 0.92)",
+        backdropFilter: "blur(12px)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        borderRadius: 10,
+        padding: "14px 16px",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+      }}
+    >
+      {/* Category */}
+      <div style={{ fontSize: 10, color: "#888888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+        {star.market.category ?? "uncategorized"}
+      </div>
+
+      {/* Question */}
+      <div style={{ fontSize: 14, color: "#eeeeee", lineHeight: 1.35, marginBottom: 10, fontWeight: 500 }}>
+        {star.market.question}
+      </div>
+
+      {/* Yes/No bar */}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+          <span style={{ fontSize: 13, color: "#00dd66", fontFamily: "monospace", fontWeight: 600 }}>
+            Yes {yesPct.toFixed(0)}¢
+          </span>
+          <span style={{ fontSize: 13, color: "#ee4455", fontFamily: "monospace", fontWeight: 600 }}>
+            No {noPct.toFixed(0)}¢
+          </span>
+        </div>
+        <div style={{ position: "relative", height: 8, borderRadius: 4, overflow: "hidden", background: "#2a2a2a" }}>
+          {/* Yes bar from left */}
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: `${yesPct}%`,
+              background: "linear-gradient(90deg, #00dd66, #00dd66aa)",
+              borderRadius: 4,
+            }}
+          />
+          {/* No bar from right */}
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: `${noPct}%`,
+              background: "linear-gradient(270deg, #ee4455, #ee4455aa)",
+              borderRadius: 4,
+            }}
+          />
+          {/* Yellow overlap where they meet */}
+          {yesPct + noPct > 100 && (() => {
+            const overlapStart = 100 - noPct
+            const overlapWidth = yesPct - overlapStart
+            return (
+              <div
+                style={{
+                  position: "absolute",
+                  left: `${overlapStart}%`,
+                  top: 0,
+                  bottom: 0,
+                  width: `${overlapWidth}%`,
+                  background: "#ffcc00",
+                  borderRadius: 2,
+                }}
+              />
+            )
+          })()}
+          {/* Darwin estimate marker */}
+          {darwinPct !== null && (
+            <div
+              style={{
+                position: "absolute",
+                left: `${darwinPct}%`,
+                top: -2,
+                bottom: -2,
+                width: 2.5,
+                background: "#ffffff",
+                borderRadius: 1,
+                boxShadow: "0 0 6px rgba(255,255,255,0.7)",
+              }}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Gap/overlap indicator */}
+      {star.signal && darwinPct !== null && (
+        <div style={{ marginBottom: 6 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <span style={{ fontSize: 11, color: "#999999", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {Math.abs(ev) > 0 ? (ev > 0 ? "Underpriced" : "Overpriced") : "Fair"}
+            </span>
+            <span
+              style={{
+                fontSize: 14,
+                fontFamily: "monospace",
+                fontWeight: 700,
+                color: ev > 0 ? "#00ff88" : "#ff4466",
+              }}
+            >
+              {ev > 0 ? "+" : ""}{(ev * 100).toFixed(1)}pp
+            </span>
+          </div>
+          {/* Gap bar */}
+          <div style={{ position: "relative", height: 5, borderRadius: 3, background: "#2a2a2a" }}>
+            {(() => {
+              const marketPct = yesPct
+              const left = Math.min(marketPct, darwinPct)
+              const width = Math.abs(darwinPct - marketPct)
+              return (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: `${left}%`,
+                    top: 0,
+                    bottom: 0,
+                    width: `${Math.max(width, 0.5)}%`,
+                    background: ev > 0 ? "rgba(0,255,136,0.4)" : "rgba(255,68,102,0.4)",
+                    borderRadius: 3,
+                  }}
+                />
+              )
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Volume */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 11, color: "#777777" }}>
+          ${(star.market.volume / 1e6).toFixed(1)}M volume
+        </span>
+        {star.signal && (
+          <span style={{ fontSize: 11, color: "#777777" }}>
+            {star.signal.confidence} confidence
+          </span>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function MarketStar({ star, center, onStarClick }: {
@@ -76,38 +232,15 @@ function MarketStar({ star, center, onStarClick }: {
           />
         </mesh>
       </Billboard>
-      {/* Label on hover */}
+      {/* Hover card */}
       {hovered && (
-        <Billboard position={[0, glowSize * 0.6 + 0.5, 0]}>
-          <Text
-            fontSize={0.4}
-            color="#ffffff"
-            anchorX="center"
-            anchorY="bottom"
-            outlineWidth={0.08}
-            outlineBlur={0.2}
-            outlineColor="#000000"
-            outlineOpacity={0.9}
-            maxWidth={8}
-          >
-            {star.market.question}
-          </Text>
-          {star.signal && (
-            <Text
-              fontSize={0.3}
-              color={star.signal.ev > 0 ? "#00ff88" : "#ff4466"}
-              anchorX="center"
-              anchorY="top"
-              position={[0, -0.15, 0]}
-              outlineWidth={0.05}
-              outlineBlur={0.15}
-              outlineColor="#000000"
-              outlineOpacity={0.8}
-            >
-              {`${star.signal.ev > 0 ? "+" : ""}${(star.signal.ev * 100).toFixed(1)}pp EV`}
-            </Text>
-          )}
-        </Billboard>
+        <Html
+          position={[0, glowSize * 0.3 + 0.1, 0]}
+          center
+          style={{ pointerEvents: "none", transform: "translateY(-100%)" }}
+        >
+          <StarHoverCard star={star} />
+        </Html>
       )}
     </group>
   )
@@ -157,7 +290,7 @@ function DistanceLabel({
         onPointerOut={() => { document.body.style.cursor = "auto" }}
       >
         <Text
-          fontSize={1.4}
+          fontSize={0.9}
           color={dimmed ? "#445566" : "#ffffff"}
           anchorX="center"
           anchorY="bottom"
@@ -171,7 +304,7 @@ function DistanceLabel({
         </Text>
         {focused && (
           <Text
-            fontSize={0.65}
+            fontSize={0.45}
             color={dimmed ? "#334455" : "#99aabb"}
             anchorX="center"
             anchorY="top"
@@ -205,7 +338,7 @@ export function GalaxyView({
         const layers = dimmed
           ? c.layers.map((l) => ({ ...l, opacity: l.opacity * 0.15 }))
           : focused
-            ? c.layers.map((l) => ({ ...l, opacity: l.opacity * 0.12 }))
+            ? c.layers.map((l) => ({ ...l, opacity: l.opacity * 0.04 }))
             : c.layers
 
         return (

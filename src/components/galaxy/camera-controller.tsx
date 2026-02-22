@@ -15,7 +15,7 @@ interface CameraControllerProps {
 
 const GALAXY_POS = new THREE.Vector3(0, 15, 80)
 const GALAXY_TARGET = new THREE.Vector3(0, 0, 0)
-const LERP_SPEED = 3
+const LERP_SPEED = 2.4
 
 export function CameraController({ mode, target }: CameraControllerProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null)

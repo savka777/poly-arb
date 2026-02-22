@@ -16,57 +16,65 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
 
   return (
     <div className="absolute right-4 top-4 bottom-4 w-[380px] z-50 pointer-events-auto">
-      <div className="h-full bg-[#0a0a1a]/95 backdrop-blur-xl border border-[#1a1a3a] rounded-lg overflow-hidden flex flex-col">
+      <div className="h-full bg-[#181818]/95 backdrop-blur-xl border border-[#333333] rounded-lg overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-start justify-between p-4 border-b border-[#1a1a3a]">
+        <div className="flex items-start justify-between p-4 border-b border-[#333333]">
           <div className="flex-1 pr-3">
-            <h2 className="text-sm font-medium text-[#ccd0e0] leading-tight">
+            <h2 className="text-sm font-medium text-[#dddde0] leading-tight">
               {market.question}
             </h2>
             <div className="flex items-center gap-2 mt-2">
-              <span className="text-[10px] uppercase tracking-wider text-[#556688] bg-[#111128] px-2 py-0.5 rounded">
+              <span className="text-xs uppercase tracking-wider text-[#888888] bg-[#222222] px-2 py-0.5 rounded">
                 {market.category ?? "uncategorized"}
               </span>
-              <span className="text-[10px] text-[#556688]">
+              <span className="text-xs text-[#888888]">
                 Vol: ${(market.volume / 1e6).toFixed(1)}M
               </span>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-[#556688] hover:text-[#ccd0e0] transition-colors shrink-0"
+            className="text-[#666666] hover:text-[#cccccc] transition-colors shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Price comparison */}
-        <div className="p-4 border-b border-[#1a1a3a]">
+        <div className="p-4 border-b border-[#333333]">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-[#556688] mb-1">
-                Market Price
+              <div className="text-xs uppercase tracking-wider text-[#888888] mb-1">
+                Yes
               </div>
-              <div className="text-2xl font-mono text-[#ccd0e0]">
-                {(market.probability * 100).toFixed(1)}%
+              <div className="text-2xl font-mono text-[#dddde0]">
+                {(market.probability * 100).toFixed(1)}¢
               </div>
             </div>
-            {signal && (
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-[#556688] mb-1">
-                  Darwin Estimate
-                </div>
-                <div className="text-2xl font-mono text-[#ccd0e0]">
-                  {(signal.darwinEstimate * 100).toFixed(1)}%
-                </div>
+            <div>
+              <div className="text-xs uppercase tracking-wider text-[#888888] mb-1">
+                No
               </div>
-            )}
+              <div className="text-2xl font-mono text-[#dddde0]">
+                {((1 - market.probability) * 100).toFixed(1)}¢
+              </div>
+            </div>
           </div>
+          {signal && (
+            <div className="mt-3 pt-3 border-t border-[#2a2a2a]">
+              <div className="text-xs uppercase tracking-wider text-[#888888] mb-1">
+                Darwin Estimate
+              </div>
+              <div className="text-lg font-mono text-[#dddde0]">
+                {(signal.darwinEstimate * 100).toFixed(1)}%
+              </div>
+            </div>
+          )}
         </div>
 
         {/* EV Badge */}
         {signal && (
-          <div className="p-4 border-b border-[#1a1a3a]">
+          <div className="p-4 border-b border-[#333333]">
             <div className="flex items-center gap-3">
               <div
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded ${
@@ -85,10 +93,10 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
                 </span>
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase tracking-wider text-[#556688]">
+                <span className="text-xs uppercase tracking-wider text-[#888888]">
                   Expected Value
                 </span>
-                <span className="text-xs text-[#8899bb]">
+                <span className="text-xs text-[#aaaaaa]">
                   {signal.confidence} confidence
                 </span>
               </div>
@@ -100,14 +108,14 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
         <div className="flex-1 overflow-y-auto">
           {/* Reasoning */}
           {signal?.reasoning && (
-            <div className="p-4 border-b border-[#1a1a3a]">
+            <div className="p-4 border-b border-[#333333]">
               <div className="flex items-center gap-1.5 mb-2">
-                <Brain className="h-3.5 w-3.5 text-[#556688]" />
-                <span className="text-[10px] uppercase tracking-wider text-[#556688]">
+                <Brain className="h-3.5 w-3.5 text-[#888888]" />
+                <span className="text-xs uppercase tracking-wider text-[#888888]">
                   Agent Reasoning
                 </span>
               </div>
-              <p className="text-xs text-[#8899bb] leading-relaxed">
+              <p className="text-xs text-[#aaaaaa] leading-relaxed">
                 {signal.reasoning}
               </p>
             </div>
@@ -117,14 +125,14 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
           {signal?.newsEvents && signal.newsEvents.length > 0 && (
             <div className="p-4">
               <div className="flex items-center gap-1.5 mb-2">
-                <Newspaper className="h-3.5 w-3.5 text-[#556688]" />
-                <span className="text-[10px] uppercase tracking-wider text-[#556688]">
+                <Newspaper className="h-3.5 w-3.5 text-[#888888]" />
+                <span className="text-xs uppercase tracking-wider text-[#888888]">
                   News Events ({signal.newsEvents.length})
                 </span>
               </div>
               <ul className="space-y-2">
                 {signal.newsEvents.map((event, i) => (
-                  <li key={i} className="text-xs text-[#8899bb] pl-3 border-l border-[#1a1a3a]">
+                  <li key={i} className="text-xs text-[#aaaaaa] pl-3 border-l border-[#333333]">
                     {event}
                   </li>
                 ))}
@@ -135,26 +143,26 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
           {/* No signal state */}
           {!signal && (
             <div className="p-4 text-center">
-              <p className="text-xs text-[#556688]">
-                No signal detected for this market yet.
+              <p className="text-xs text-[#888888]">
+                No signal detected for this trade yet.
               </p>
-              <p className="text-[10px] text-[#334455] mt-1">
-                The agent hasn&apos;t analyzed this market or found no divergence.
+              <p className="text-xs text-[#555555] mt-1">
+                The agent hasn&apos;t analyzed this trade or found no divergence.
               </p>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-[#1a1a3a] flex items-center justify-between">
+        <div className="p-3 border-t border-[#333333] flex items-center justify-between">
           <a
             href={`/markets/${market.id}`}
-            className="text-[10px] text-[#4488cc] hover:text-[#66aaee] transition-colors uppercase tracking-wider"
+            className="text-xs text-[#7ca8e8] hover:text-[#a8c8f0] transition-colors uppercase tracking-wider"
           >
             Full Details →
           </a>
           {signal && (
-            <span className="text-[10px] text-[#334455]">
+            <span className="text-xs text-[#555555]">
               {new Date(signal.createdAt).toLocaleTimeString()}
             </span>
           )}
