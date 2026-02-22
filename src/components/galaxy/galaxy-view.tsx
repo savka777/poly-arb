@@ -180,9 +180,7 @@ function DistanceLabel({
           outlineColor="#000000"
           outlineOpacity={0.7}
         >
-          {focused
-            ? `${c.stars.length} markets`
-            : `${c.stars.length} markets${c.signalCount > 0 ? ` · ${c.signalCount} signals` : ""}`}
+          {`${c.stars.length} markets`}
         </Text>
       </group>
     </Billboard>

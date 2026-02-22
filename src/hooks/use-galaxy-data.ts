@@ -33,51 +33,138 @@ export interface GalaxyData {
 }
 
 const CATEGORY_POSITIONS: Record<string, [number, number, number]> = {
-  politics: [-38, 5, -25],
-  crypto: [30, -8, -20],
-  sports: [12, 8, 30],
-  finance: [-35, -18, 12],
-  science: [35, 18, 12],
-  entertainment: [-12, -22, -35],
-  technology: [22, 28, -12],
-  world: [-38, 8, 22],
-  culture: [8, -28, 18],
-  other: [-10, 25, 0],
+  politics:      [-38,   5,  -25],
+  crypto:        [ 30,  -8,  -20],
+  sports:        [ 12,   8,   30],
+  finance:       [-35, -18,   12],
+  science:       [ 35,  18,   12],
+  entertainment: [-12, -22,  -35],
+  technology:    [ 22,  28,  -12],
+  world:         [-38,   8,   22],
+  culture:       [  8, -28,   18],
+  esports:       [ 40,  -5,   25],
+  weather:       [-20,  30,   15],
+  elections:     [-50,  -5,  -10],
+  economy:       [-15, -35,  -15],
+  ai:            [ 45,  30,    0],
+  space:         [  0,  40,  -20],
+  other:         [-10,  25,    0],
 }
 
 // Each category gets a unique color palette + disc tilt for its galaxy
 const CATEGORY_COLORS: Record<string, { primary: string; accent: string }> = {
-  politics: { primary: "#ff6633", accent: "#ff9955" },
-  crypto: { primary: "#00ddff", accent: "#00aadd" },
-  sports: { primary: "#6366f1", accent: "#a5b4fc" },
-  finance: { primary: "#ffd000", accent: "#ffaa00" },
-  science: { primary: "#cc44ff", accent: "#ee88ff" },
-  entertainment: { primary: "#ff2299", accent: "#ff66bb" },
-  technology: { primary: "#2266ff", accent: "#5599ff" },
-  world: { primary: "#44ccdd", accent: "#77ddee" },
-  culture: { primary: "#ff8800", accent: "#ffbb44" },
-  other: { primary: "#8888bb", accent: "#aaaadd" },
+  politics:      { primary: "#ff7744", accent: "#ffaa77" },
+  crypto:        { primary: "#22ccee", accent: "#55ddff" },
+  sports:        { primary: "#6366f1", accent: "#a5b4fc" },
+  finance:       { primary: "#f0c030", accent: "#f5d670" },
+  science:       { primary: "#bb55ff", accent: "#dd99ff" },
+  entertainment: { primary: "#ff55aa", accent: "#ff88cc" },
+  technology:    { primary: "#3388ff", accent: "#66aaff" },
+  world:         { primary: "#55bbcc", accent: "#88ddee" },
+  culture:       { primary: "#ee8844", accent: "#ffbb77" },
+  esports:       { primary: "#44ddaa", accent: "#77eebb" },
+  weather:       { primary: "#77aadd", accent: "#aaccee" },
+  elections:     { primary: "#dd7766", accent: "#eeaa99" },
+  economy:       { primary: "#ddaa44", accent: "#eebb66" },
+  ai:            { primary: "#9988ff", accent: "#bbaaff" },
+  space:         { primary: "#6699dd", accent: "#88bbee" },
+  other:         { primary: "#9999cc", accent: "#bbbbee" },
 }
 
 // Each galaxy disc tilted to a unique orientation — euler [x, y, z] in radians
 const CATEGORY_TILTS: Record<string, [number, number, number]> = {
   politics:      [0.9,  0.0,   0.3],
   crypto:        [0.6,  0.8,  -0.2],
-  sports:        [1.1,  -0.3,  0.4],
+  sports:        [1.1, -0.3,   0.4],
   finance:       [0.5,  0.3,   0.1],
   science:       [0.8,  0.4,  -0.5],
   entertainment: [0.7, -0.7,   0.4],
   technology:    [0.8,  0.6,  -0.8],
   world:         [0.5, -0.2,   0.6],
   culture:       [0.9, -0.4,  -0.3],
+  esports:       [0.7,  0.5,   0.2],
+  weather:       [0.6, -0.6,   0.3],
+  elections:     [0.8,  0.2,  -0.4],
+  economy:       [0.5, -0.3,   0.6],
+  ai:            [0.7,  0.7,  -0.1],
+  space:         [0.9,  0.1,   0.5],
   other:         [0.7,  0.2,   0.5],
+}
+
+const CATEGORY_MAP: Record<string, string> = {
+  // Politics
+  politics: "politics", trump: "politics", democrats: "politics", congress: "politics",
+  cabinet: "politics", senate: "politics", "gov shutdown": "politics", scotus: "politics",
+  "supreme court": "politics", primaries: "politics", vance: "politics",
+  // Elections
+  elections: "elections", "us election": "elections", midterms: "elections",
+  "world elections": "elections", "global elections": "elections",
+  "nov 4 elections": "elections", referendum: "elections",
+  // Crypto
+  crypto: "crypto", bitcoin: "crypto", ethereum: "crypto", solana: "crypto",
+  xrp: "crypto", dogecoin: "crypto", bnb: "crypto", "crypto prices": "crypto",
+  ripple: "crypto", stablecoins: "crypto", hyperliquid: "crypto", airdrops: "crypto",
+  "token sales": "crypto", derivatives: "crypto",
+  // Sports
+  sports: "sports", nba: "sports", nfl: "sports", nhl: "sports", mlb: "sports",
+  soccer: "sports", tennis: "sports", ufc: "sports", mma: "sports", cricket: "sports",
+  basketball: "sports", hockey: "sports", baseball: "sports", rugby: "sports",
+  "formula 1": "sports", boxing: "sports", mls: "sports", "premier league": "sports",
+  "champions league": "sports", "serie a": "sports", "la liga": "sports",
+  ncaa: "sports", "ncaa football": "sports", "ncaa basketball": "sports",
+  "nfl draft": "sports", "nfl playoffs": "sports", epl: "sports",
+  // Esports
+  esports: "esports", "dota 2": "esports", valorant: "esports",
+  "league of legends": "esports", "counter strike 2": "esports",
+  "rocket league": "esports", cod: "esports", lol: "esports",
+  "honor of kings": "esports",
+  // Finance
+  finance: "finance", stocks: "finance", equities: "finance", earnings: "finance",
+  commodities: "finance", gold: "finance", "s&p 500": "finance", ipo: "finance",
+  ipos: "finance", "pre-market": "finance", "fed rates": "finance", fed: "finance",
+  inflation: "finance", "macro indicators": "finance", "interest rate": "finance",
+  "global rates": "finance",
+  // Economy
+  economy: "economy", gdp: "economy", "global gdp": "economy",
+  "economic policy": "economy", tariffs: "economy", "trade war": "economy",
+  housing: "economy", unemployment: "economy", taxes: "economy",
+  // Entertainment
+  entertainment: "entertainment", movies: "entertainment", music: "entertainment",
+  netflix: "entertainment", "reality tv": "entertainment", youtube: "entertainment",
+  spotify: "entertainment", "box office": "entertainment", oscars: "entertainment",
+  grammys: "entertainment", awards: "entertainment", celebrities: "entertainment",
+  eurovision: "entertainment", kpop: "entertainment",
+  // Technology
+  technology: "technology", tech: "technology", "big tech": "technology",
+  spacex: "technology", apple: "technology", tesla: "technology",
+  openai: "technology", tiktok: "technology",
+  // AI
+  ai: "ai", "claude 5": "ai", "gemini 3": "ai", chatgpt: "ai",
+  // Science
+  science: "science", "climate & science": "science", climate: "science",
+  pandemics: "science", "natural disasters": "science",
+  // Space
+  space: "space", olympics: "space",
+  // Weather
+  weather: "weather", "daily temperature": "weather", precipitation: "weather",
+  // World / Geopolitics
+  world: "world", geopolitics: "world", "foreign policy": "world",
+  ukraine: "world", israel: "world", gaza: "world", iran: "world",
+  "middle east": "world", china: "world", india: "world", russia: "world",
+  brazil: "world", japan: "world", "south korea": "world",
+  // Culture
+  culture: "culture", games: "culture", collectibles: "culture",
+  "prediction markets": "culture", mrbeast: "culture",
 }
 
 function normalizeCategory(cat: string | undefined): string {
   if (!cat) return "other"
   const lower = cat.toLowerCase()
-  for (const key of Object.keys(CATEGORY_POSITIONS)) {
-    if (lower.includes(key)) return key
+  // Exact match first
+  if (CATEGORY_MAP[lower]) return CATEGORY_MAP[lower]
+  // Substring match
+  for (const [key, value] of Object.entries(CATEGORY_MAP)) {
+    if (lower.includes(key)) return value
   }
   return "other"
 }
@@ -235,7 +322,7 @@ function scatteredPosition(
 }
 
 export function useGalaxyData(): GalaxyData {
-  const { data: marketsData, isLoading: marketsLoading } = useMarkets({ limit: 200 })
+  const { data: marketsData, isLoading: marketsLoading } = useMarkets({ limit: 1000 })
   const { data: signalsData, isLoading: signalsLoading } = useSignals()
 
   return useMemo(() => {

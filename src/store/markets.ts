@@ -65,7 +65,7 @@ export function getAllMarkets(opts: GetAllMarketsOptions = {}): {
   totalPages: number;
 } {
   const page = Math.max(1, opts.page ?? 1);
-  const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
+  const limit = Math.max(1, opts.limit ?? 50);
   const offset = (page - 1) * limit;
 
   // When marketIds is provided, fetch exactly those markets (no pagination needed)
