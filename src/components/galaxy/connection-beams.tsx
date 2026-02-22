@@ -45,7 +45,7 @@ function Beam({ from, to, strength }: { from: [number, number, number]; to: [num
     const positions = new Float32Array([...from, ...to])
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3))
     const material = new THREE.LineBasicMaterial({
-      color: new THREE.Color("#4488cc"),
+      color: new THREE.Color("#66bbff"),
       transparent: true,
       opacity: 0,
       blending: THREE.AdditiveBlending,
@@ -67,8 +67,8 @@ function Beam({ from, to, strength }: { from: [number, number, number]; to: [num
     if (lineRef.current) {
       const mat = lineRef.current.material as THREE.LineBasicMaterial
       const fadeIn = Math.min(age.current / 0.3, 1)
-      const pulse = 0.7 + 0.2 * Math.sin(age.current * 2.5)
-      mat.opacity = fadeIn * pulse * Math.max(strength, 0.5)
+      const pulse = 0.85 + 0.15 * Math.sin(age.current * 2.5)
+      mat.opacity = fadeIn * pulse * (0.6 + 0.4 * strength)
     }
   })
 

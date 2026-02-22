@@ -19,7 +19,9 @@ import type { ChartDataPoint } from "@/lib/chart-types"
 import type { ConstellationData, StarData } from "@/hooks/use-galaxy-data"
 import type { CameraMode } from "./camera-controller"
 import type { UTCTimestamp } from "lightweight-charts"
-import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, X, Search, ChevronUp, ChevronDown } from "lucide-react"
+import { useMarkets } from "@/hooks/use-markets"
+import { MarketSearchModal } from "@/components/market-search-modal"
 
 // Invisible plane for raycasting mouse position into 3D space
 function MouseTracker({ mousePos }: { mousePos: React.MutableRefObject<THREE.Vector3> }) {
@@ -393,6 +395,7 @@ export function GalaxyScene() {
   const galaxyData = useGalaxyData()
   const { data: scoutData } = useScout(10)
   const { mutate: dismissEvent } = useScoutDismiss()
+  const { data: marketsData, isLoading: marketsLoading } = useMarkets({ limit: 1000 })
   const mousePos = useRef(new THREE.Vector3(9999, 9999, 9999))
 
   const [cameraMode, setCameraMode] = useState<CameraMode>("galaxy")
@@ -404,6 +407,8 @@ export function GalaxyScene() {
   const [customColors, setCustomColors] = useState<Record<string, string>>({})
   const [colorPickerTarget, setColorPickerTarget] = useState<{ name: string; x: number; y: number } | null>(null)
   const [tradesCollapsed, setTradesCollapsed] = useState(false)
+  const [scoutMinimized, setScoutMinimized] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const toggleCategory = useCallback((name: string) => {
     setHiddenCategories((prev) => {
@@ -464,6 +469,31 @@ export function GalaxyScene() {
     setScoutConfigOpen(true)
   }, [])
 
+  // Navigate to a market by ID — find its constellation, focus it, then select the star
+  const handleNavigateToMarket = useCallback((marketId: string) => {
+    for (const c of galaxyData.constellations) {
+      const star = c.stars.find((s) => s.market.id === marketId)
+      if (star) {
+        setCameraMode("constellation")
+        setCameraTarget(c.position)
+        setFocusedConstellation(c.name)
+        setSelectedStars([star])
+        return
+      }
+    }
+  }, [galaxyData.constellations])
+
+  // Scout events filtered to selected stars
+  const selectedScoutEvents = useMemo(() => {
+    if (!scoutData?.events || selectedStars.length === 0) return []
+    const ids = new Set(selectedStars.map((s) => s.market.id))
+    return scoutData.events.filter((e) =>
+      e.matchedMarkets.some((m) => ids.has(m.marketId))
+    )
+  }, [scoutData, selectedStars])
+
+  const allMarkets = marketsData?.markets ?? []
+
   // Find focused constellation's stars for the side list
   const focusedData = filteredConstellations.find((c) => c.name === focusedConstellation)
 
@@ -516,6 +546,13 @@ export function GalaxyScene() {
               </span>
             )}
           </div>
+          {/* Search button */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg p-1.5 text-[#99aabb] hover:text-[#ccd0e0] hover:border-[#556688] transition-colors ml-2"
+          >
+            <Search className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
@@ -590,18 +627,60 @@ export function GalaxyScene() {
         <StarDetailPanel
           star={selectedStars[0]}
           onClose={() => setSelectedStars([])}
+          scoutEvents={selectedScoutEvents}
         />
       )}
 
-      {/* Scout notification panel — bottom-right, hidden when star detail is open */}
-      {selectedStars.length === 0 && scoutData?.events && scoutData.events.length > 0 && (
+      {/* Scout notification panel — bottom-right */}
+      {scoutData?.events && scoutData.events.length > 0 && (
         <div className="absolute bottom-4 right-4 z-40 pointer-events-auto">
-          <ScoutNotificationPanel
-            events={scoutData.events}
-            onDismiss={dismissEvent}
-          />
+          {scoutMinimized ? (
+            <button
+              onClick={() => setScoutMinimized(false)}
+              className="flex items-center gap-2 bg-[#0a0a10]/90 backdrop-blur border border-[#2a2a3a] rounded-lg px-3 py-2 text-[#44aaff] hover:border-[#44aaff]/40 transition-colors"
+            >
+              <span className="text-[10px]">🛸</span>
+              <span className="text-[10px] uppercase tracking-wider">Signal Scout ({scoutData.events.length})</span>
+              <ChevronUp className="h-3 w-3" />
+            </button>
+          ) : (
+            <div className="relative">
+              <div className="absolute top-2 right-8 z-10 flex items-center gap-1.5">
+                {scoutData.events.length > 0 && (
+                  <span className="text-[9px] bg-[#44aaff]/20 text-[#44aaff] px-1.5 py-0.5 rounded-full font-mono">
+                    {scoutData.events.length}
+                  </span>
+                )}
+                <button
+                  onClick={() => setScoutMinimized(true)}
+                  className="text-[#556688] hover:text-[#aabbcc] transition-colors"
+                  title="Minimize"
+                >
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              </div>
+              <ScoutNotificationPanel
+                events={scoutData.events}
+                onDismiss={dismissEvent}
+                onMarketClick={handleNavigateToMarket}
+              />
+            </div>
+          )}
         </div>
       )}
+
+      {/* Market search modal */}
+      <MarketSearchModal
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onSelect={(market) => {
+          handleNavigateToMarket(market.id)
+          setSearchOpen(false)
+        }}
+        currentMarketIds={selectedStars.map((s) => s.market.id)}
+        markets={allMarkets}
+        loading={marketsLoading}
+      />
 
       {/* Category filter */}
       {cameraMode === "galaxy" && (

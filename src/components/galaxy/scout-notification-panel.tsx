@@ -20,9 +20,10 @@ function isNew(iso: string): boolean {
 interface ScoutNotificationPanelProps {
   events: ScoutEvent[]
   onDismiss?: (id: string) => void
+  onMarketClick?: (marketId: string) => void
 }
 
-export function ScoutNotificationPanel({ events, onDismiss }: ScoutNotificationPanelProps) {
+export function ScoutNotificationPanel({ events, onDismiss, onMarketClick }: ScoutNotificationPanelProps) {
   return (
     <div className="bg-[#0a0a10]/90 backdrop-blur border border-[#2a2a3a] rounded-lg overflow-hidden w-[340px]">
       {/* Header */}
@@ -99,7 +100,8 @@ export function ScoutNotificationPanel({ events, onDismiss }: ScoutNotificationP
                     {event.matchedMarkets.map((market, i) => (
                       <div
                         key={i}
-                        className="bg-[#08080d]/60 rounded border border-[#1a1a24] px-2 py-1.5"
+                        className={`bg-[#08080d]/60 rounded border border-[#1a1a24] px-2 py-1.5 ${onMarketClick ? "cursor-pointer hover:border-[#44aaff]/40 transition-colors" : ""}`}
+                        onClick={onMarketClick ? () => onMarketClick(market.marketId) : undefined}
                       >
                         {/* Market question */}
                         <p className="text-[10px] text-[#8899aa] leading-snug line-clamp-2 mb-1.5">

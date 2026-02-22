@@ -1,14 +1,26 @@
 "use client"
 
-import { X, TrendingUp, TrendingDown, Newspaper, Brain } from "lucide-react"
+import { X, TrendingUp, TrendingDown, Newspaper, Brain, Radar } from "lucide-react"
 import type { StarData } from "@/hooks/use-galaxy-data"
+import type { ScoutEvent } from "@/lib/types"
+
+function scoutTimeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const diffS = Math.floor(diffMs / 1000)
+  if (diffS < 60) return `${diffS}s ago`
+  const diffM = Math.floor(diffS / 60)
+  if (diffM < 60) return `${diffM}m ago`
+  const diffH = Math.floor(diffM / 60)
+  return `${diffH}h ago`
+}
 
 interface StarDetailPanelProps {
   star: StarData
   onClose: () => void
+  scoutEvents?: ScoutEvent[]
 }
 
-export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
+export function StarDetailPanel({ star, onClose, scoutEvents }: StarDetailPanelProps) {
   const { market, signal } = star
   const ev = signal?.ev ?? 0
   const isBullish = ev > 0
@@ -136,6 +148,44 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
                     {event}
                   </li>
                 ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Scout alerts for this market */}
+          {scoutEvents && scoutEvents.length > 0 && (
+            <div className="p-4 border-b border-[#333333]">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Radar className="h-3.5 w-3.5 text-[#44aaff]" />
+                <span className="text-xs uppercase tracking-wider text-[#44aaff]">
+                  Scout Alerts ({scoutEvents.length})
+                </span>
+              </div>
+              <ul className="space-y-2">
+                {scoutEvents.map((evt) => {
+                  const matchedMarket = evt.matchedMarkets.find((m) => m.marketId === market.id)
+                  return (
+                    <li key={evt.id} className="pl-3 border-l-2 border-[#44aaff]/30">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[9px] uppercase tracking-wider text-[#556688]">{evt.article.source}</span>
+                        <span className="text-[9px] text-[#444455]">{scoutTimeAgo(evt.timestamp)}</span>
+                        {matchedMarket && (
+                          <span className="text-[9px] px-1 py-0.5 rounded bg-[#44aaff]/15 text-[#44aaff] font-mono">
+                            {(matchedMarket.keywordOverlap * 100).toFixed(0)}% match
+                          </span>
+                        )}
+                      </div>
+                      <a
+                        href={evt.article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] text-[#aabbcc] hover:text-[#ccd0e0] leading-snug line-clamp-2 transition-colors"
+                      >
+                        {evt.article.title}
+                      </a>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           )}
