@@ -60,7 +60,7 @@ function AgentStatsOverlay({ onOpenConfig }: { onOpenConfig: () => void }) {
     <div className="absolute top-4 right-4 z-40 pointer-events-none" style={{ pointerEvents: "none" }}>
       <div className="bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg px-4 py-3 min-w-[200px]">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs uppercase tracking-wider text-[#556688]">
+          <span className="text-xs uppercase tracking-wider text-[#8899aa]">
             Agent Status
           </span>
           <div className="flex items-center gap-1.5">
@@ -69,7 +69,7 @@ function AgentStatsOverlay({ onOpenConfig }: { onOpenConfig: () => void }) {
                 health?.status === "ok" ? "bg-[#00ff88] animate-pulse" : "bg-[#556688]"
               }`}
             />
-            <span className="text-xs text-[#556688]">
+            <span className="text-xs text-[#8899aa]">
               {health?.status === "ok" ? "LIVE" : "..."}
             </span>
           </div>
@@ -77,8 +77,8 @@ function AgentStatsOverlay({ onOpenConfig }: { onOpenConfig: () => void }) {
         <div className="space-y-1.5">
           <StatRow label="Total trades" value={signalCount} />
           <StatRow label="High signal" value={highEv} highlight />
-          <div className="pt-1 mt-1 border-t border-[#333333]">
-            <div className="flex items-center justify-between mb-0.5">
+          <div className="pt-1.5 mt-1.5 border-t border-[#333333] space-y-1.5">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-[#44aaff] animate-pulse" />
                 <span className="text-xs uppercase tracking-wider text-[#44aaff]">Scout</span>
@@ -86,13 +86,15 @@ function AgentStatsOverlay({ onOpenConfig }: { onOpenConfig: () => void }) {
               <button
                 onClick={onOpenConfig}
                 style={{ pointerEvents: "auto" }}
-                className="text-xs text-[#334455] hover:text-[#44aaff] transition-colors leading-none"
+                className="text-xs text-[#667788] hover:text-[#44aaff] transition-colors leading-none"
                 title="Configure scout keywords"
               >
                 👽
               </button>
             </div>
-            <p className="text-xs text-[#667799] truncate leading-tight">{scoutLabel}</p>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[#99aabb] truncate">{scoutLabel}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -103,7 +105,7 @@ function AgentStatsOverlay({ onOpenConfig }: { onOpenConfig: () => void }) {
 function StatRow({ label, value, highlight }: { label: string; value: string | number; highlight?: boolean }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs text-[#667799]">{label}</span>
+      <span className="text-xs text-[#99aabb]">{label}</span>
       <span className={`text-xs font-mono ${highlight ? "text-[#00ff88]" : "text-[#ccd0e0]"}`}>
         {value}
       </span>
@@ -114,7 +116,7 @@ function StatRow({ label, value, highlight }: { label: string; value: string | n
 function LoadingOverlay() {
   return (
     <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
-      <div className="flex items-center gap-2 text-[#556688]">
+      <div className="flex items-center gap-2 text-[#8899aa]">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-xs uppercase tracking-wider">Loading markets...</span>
       </div>
@@ -210,7 +212,7 @@ function ScoutConfigPanel({ onClose }: { onClose: () => void }) {
           </div>
           <button
             onClick={onClose}
-            className="text-[#334455] hover:text-[#667799] transition-colors shrink-0 mt-0.5"
+            className="text-[#667788] hover:text-[#99aabb] transition-colors shrink-0 mt-0.5"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -220,7 +222,7 @@ function ScoutConfigPanel({ onClose }: { onClose: () => void }) {
         <div className="border-t border-[#1a2a44] mb-3" />
 
         {/* Label */}
-        <p className="text-[9px] uppercase tracking-wider text-[#445566] mb-2">
+        <p className="text-xs uppercase tracking-wider text-[#778899] mb-2">
           News keyword filter — empty = watch everything
         </p>
 
@@ -233,11 +235,11 @@ function ScoutConfigPanel({ onClose }: { onClose: () => void }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="e.g. bitcoin, trump, fed..."
-            className="flex-1 bg-[#0d1520] border border-[#1a2a44] rounded-lg px-3 py-1.5 text-[11px] text-[#aabbcc] placeholder-[#2a3a50] outline-none focus:border-[#2255aa] transition-colors"
+            className="flex-1 bg-[#0d1520] border border-[#1a2a44] rounded-lg px-3 py-1.5 text-sm text-[#ccd0e0] placeholder-[#2a3a50] outline-none focus:border-[#2255aa] transition-colors"
           />
           <button
             onClick={addKeyword}
-            className="px-3 py-1.5 bg-[#132244] hover:bg-[#1a3060] text-[#4488dd] text-[11px] rounded-lg border border-[#1e3a6a] transition-colors"
+            className="px-3 py-1.5 bg-[#132244] hover:bg-[#1a3060] text-[#4488dd] text-sm rounded-lg border border-[#1e3a6a] transition-colors"
           >
             + Add
           </button>
@@ -249,12 +251,12 @@ function ScoutConfigPanel({ onClose }: { onClose: () => void }) {
             {keywords.map((kw) => (
               <span
                 key={kw}
-                className="flex items-center gap-1 bg-[#0f1e38] text-[#6699cc] text-[10px] px-2 py-0.5 rounded-full border border-[#1e3054]"
+                className="flex items-center gap-1 bg-[#0f1e38] text-[#6699cc] text-xs px-2 py-0.5 rounded-full border border-[#1e3054]"
               >
                 {kw}
                 <button
                   onClick={() => removeKeyword(kw)}
-                  className="text-[#334466] hover:text-[#8899bb] leading-none transition-colors"
+                  className="text-[#667799] hover:text-[#8899bb] leading-none transition-colors"
                 >
                   ×
                 </button>
@@ -262,7 +264,7 @@ function ScoutConfigPanel({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         ) : (
-          <p className="text-[10px] text-[#2a3a50] italic min-h-[28px] flex items-center">
+          <p className="text-xs text-[#667788] italic min-h-[28px] flex items-center">
             No filter — scanning all news
           </p>
         )}
@@ -335,9 +337,9 @@ function MarketChart({ star }: { star: StarData }) {
   return (
     <div className="h-[320px] shrink-0 bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg overflow-hidden">
       <div className="px-3 py-1.5 border-b border-[#333333]">
-        <p className="text-xs text-[#aabbcc] truncate">{star.market.question}</p>
+        <p className="text-xs text-[#ccd0e0] truncate">{star.market.question}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-[#556688]">
+          <span className="text-xs text-[#8899aa]">
             {(star.market.probability * 100).toFixed(1)}%
           </span>
           {star.signal && (
@@ -350,7 +352,7 @@ function MarketChart({ star }: { star: StarData }) {
       <div className="h-[275px]">
         {isLoading || chartData.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <span className="text-xs text-[#556688] animate-pulse">
+            <span className="text-xs text-[#8899aa] animate-pulse">
               {isLoading ? "Loading..." : "No price data"}
             </span>
           </div>
@@ -494,7 +496,7 @@ export function GalaxyScene() {
           {cameraMode === "constellation" && (
             <button
               onClick={handleBackToGalaxy}
-              className="flex items-center gap-1.5 bg-[#181818]/80 backdrop-blur border border-[#333333] rounded px-3 py-1.5 text-xs uppercase tracking-wider text-[#667799] hover:text-[#ccd0e0] hover:border-[#334466] transition-colors"
+              className="flex items-center gap-1.5 bg-[#181818]/80 backdrop-blur border border-[#333333] rounded px-3 py-1.5 text-xs uppercase tracking-wider text-[#99aabb] hover:text-[#ccd0e0] hover:border-[#334466] transition-colors"
             >
               <ArrowLeft className="h-3 w-3" />
               Galaxy
@@ -505,7 +507,7 @@ export function GalaxyScene() {
               DARWIN CAPITAL
             </h1>
             {focusedConstellation && (
-              <span className="text-xs uppercase tracking-wider text-[#556688]">
+              <span className="text-xs uppercase tracking-wider text-[#8899aa]">
                 {focusedConstellation}
               </span>
             )}
@@ -525,7 +527,7 @@ export function GalaxyScene() {
           {/* Collapse toggle */}
           <button
             onClick={() => setTradesCollapsed((p) => !p)}
-            className="absolute -right-5 top-3 z-50 bg-[#181818]/90 backdrop-blur border border-[#333333] rounded-full w-6 h-6 flex items-center justify-center text-[#667799] hover:text-[#ccd0e0] transition-colors"
+            className="absolute -right-5 top-3 z-50 bg-[#181818]/90 backdrop-blur border border-[#333333] rounded-full w-6 h-6 flex items-center justify-center text-[#99aabb] hover:text-[#ccd0e0] transition-colors"
           >
             {tradesCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
           </button>
@@ -535,7 +537,7 @@ export function GalaxyScene() {
               {/* Market list */}
               <div className={`bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg overflow-y-auto ${selectedStar ? "flex-1 min-h-0" : "h-full"}`}>
                 <div className="px-3 py-2 border-b border-[#333333] sticky top-0 bg-[#181818]/95">
-                  <span className="text-xs uppercase tracking-wider text-[#556688]">
+                  <span className="text-xs uppercase tracking-wider text-[#8899aa]">
                     {focusedData.stars.length} Trades
                   </span>
                 </div>
@@ -549,11 +551,11 @@ export function GalaxyScene() {
                         selectedStar?.market.id === star.market.id ? "bg-[#222222]" : ""
                       }`}
                     >
-                      <p className="text-sm text-[#aabbcc] leading-tight truncate">
+                      <p className="text-sm text-[#ccd0e0] leading-tight truncate">
                         {star.market.question}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-[#556688]">
+                        <span className="text-xs text-[#8899aa]">
                           {(star.market.probability * 100).toFixed(0)}%
                         </span>
                         {star.signal && (
@@ -631,7 +633,7 @@ export function GalaxyScene() {
       {/* Legend */}
       <div style={{ position: "absolute", bottom: 16, left: 16, zIndex: 40, pointerEvents: "none" }}>
         <div className="bg-[#181818]/60 backdrop-blur border border-[#333333] rounded px-3 py-2">
-          <div className="flex items-center gap-4 text-xs text-[#556688]">
+          <div className="flex items-center gap-4 text-xs text-[#8899aa]">
             <span>Cloud density = market count</span>
             <span>Brightness = signal strength</span>
             <span>Click UFO to configure scout</span>

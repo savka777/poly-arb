@@ -35,22 +35,22 @@ function StarHoverCard({ star }: { star: StarData }) {
       }}
     >
       {/* Category */}
-      <div style={{ fontSize: 10, color: "#888888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
+      <div style={{ fontSize: 12, color: "#99aabb", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>
         {star.market.category ?? "uncategorized"}
       </div>
 
       {/* Question */}
-      <div style={{ fontSize: 14, color: "#eeeeee", lineHeight: 1.35, marginBottom: 10, fontWeight: 500 }}>
+      <div style={{ fontSize: 15, color: "#eeeeee", lineHeight: 1.35, marginBottom: 10, fontWeight: 500 }}>
         {star.market.question}
       </div>
 
       {/* Yes/No bar */}
       <div style={{ marginBottom: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ fontSize: 13, color: "#00dd66", fontFamily: "monospace", fontWeight: 600 }}>
+          <span style={{ fontSize: 14, color: "#00dd66", fontFamily: "monospace", fontWeight: 600 }}>
             Yes {yesPct.toFixed(0)}¢
           </span>
-          <span style={{ fontSize: 13, color: "#ee4455", fontFamily: "monospace", fontWeight: 600 }}>
+          <span style={{ fontSize: 14, color: "#ee4455", fontFamily: "monospace", fontWeight: 600 }}>
             No {noPct.toFixed(0)}¢
           </span>
         </div>
@@ -119,7 +119,7 @@ function StarHoverCard({ star }: { star: StarData }) {
       {star.signal && darwinPct !== null && (
         <div style={{ marginBottom: 6 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-            <span style={{ fontSize: 11, color: "#999999", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <span style={{ fontSize: 13, color: "#aabbcc", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               {Math.abs(ev) > 0 ? (ev > 0 ? "Underpriced" : "Overpriced") : "Fair"}
             </span>
             <span
@@ -159,11 +159,11 @@ function StarHoverCard({ star }: { star: StarData }) {
 
       {/* Volume */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 11, color: "#777777" }}>
+        <span style={{ fontSize: 13, color: "#99aabb" }}>
           ${(star.market.volume / 1e6).toFixed(1)}M volume
         </span>
         {star.signal && (
-          <span style={{ fontSize: 11, color: "#777777" }}>
+          <span style={{ fontSize: 13, color: "#99aabb" }}>
             {star.signal.confidence} confidence
           </span>
         )}

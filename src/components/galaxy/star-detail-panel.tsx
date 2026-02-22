@@ -20,14 +20,14 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
         {/* Header */}
         <div className="flex items-start justify-between p-4 border-b border-[#333333]">
           <div className="flex-1 pr-3">
-            <h2 className="text-sm font-medium text-[#dddde0] leading-tight">
+            <h2 className="text-base font-medium text-[#dddde0] leading-tight">
               {market.question}
             </h2>
             <div className="flex items-center gap-2 mt-2">
-              <span className="text-xs uppercase tracking-wider text-[#888888] bg-[#222222] px-2 py-0.5 rounded">
+              <span className="text-xs uppercase tracking-wider text-[#99aabb] bg-[#222222] px-2 py-0.5 rounded">
                 {market.category ?? "uncategorized"}
               </span>
-              <span className="text-xs text-[#888888]">
+              <span className="text-xs text-[#99aabb]">
                 Vol: ${(market.volume / 1e6).toFixed(1)}M
               </span>
             </div>
@@ -44,7 +44,7 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
         <div className="p-4 border-b border-[#333333]">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="text-xs uppercase tracking-wider text-[#888888] mb-1">
+              <div className="text-xs uppercase tracking-wider text-[#99aabb] mb-1">
                 Yes
               </div>
               <div className="text-2xl font-mono text-[#dddde0]">
@@ -52,7 +52,7 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
               </div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wider text-[#888888] mb-1">
+              <div className="text-xs uppercase tracking-wider text-[#99aabb] mb-1">
                 No
               </div>
               <div className="text-2xl font-mono text-[#dddde0]">
@@ -62,7 +62,7 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
           </div>
           {signal && (
             <div className="mt-3 pt-3 border-t border-[#2a2a2a]">
-              <div className="text-xs uppercase tracking-wider text-[#888888] mb-1">
+              <div className="text-xs uppercase tracking-wider text-[#99aabb] mb-1">
                 Darwin Estimate
               </div>
               <div className="text-lg font-mono text-[#dddde0]">
@@ -93,10 +93,10 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
                 </span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs uppercase tracking-wider text-[#888888]">
+                <span className="text-xs uppercase tracking-wider text-[#99aabb]">
                   Expected Value
                 </span>
-                <span className="text-xs text-[#aaaaaa]">
+                <span className="text-xs text-[#bbc0cc]">
                   {signal.confidence} confidence
                 </span>
               </div>
@@ -110,12 +110,12 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
           {signal?.reasoning && (
             <div className="p-4 border-b border-[#333333]">
               <div className="flex items-center gap-1.5 mb-2">
-                <Brain className="h-3.5 w-3.5 text-[#888888]" />
-                <span className="text-xs uppercase tracking-wider text-[#888888]">
+                <Brain className="h-3.5 w-3.5 text-[#99aabb]" />
+                <span className="text-xs uppercase tracking-wider text-[#99aabb]">
                   Agent Reasoning
                 </span>
               </div>
-              <p className="text-xs text-[#aaaaaa] leading-relaxed">
+              <p className="text-sm text-[#bbc0cc] leading-relaxed">
                 {signal.reasoning}
               </p>
             </div>
@@ -125,14 +125,14 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
           {signal?.newsEvents && signal.newsEvents.length > 0 && (
             <div className="p-4">
               <div className="flex items-center gap-1.5 mb-2">
-                <Newspaper className="h-3.5 w-3.5 text-[#888888]" />
-                <span className="text-xs uppercase tracking-wider text-[#888888]">
+                <Newspaper className="h-3.5 w-3.5 text-[#99aabb]" />
+                <span className="text-xs uppercase tracking-wider text-[#99aabb]">
                   News Events ({signal.newsEvents.length})
                 </span>
               </div>
               <ul className="space-y-2">
                 {signal.newsEvents.map((event, i) => (
-                  <li key={i} className="text-xs text-[#aaaaaa] pl-3 border-l border-[#333333]">
+                  <li key={i} className="text-sm text-[#bbc0cc] pl-3 border-l border-[#333333]">
                     {event}
                   </li>
                 ))}
@@ -143,10 +143,10 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
           {/* No signal state */}
           {!signal && (
             <div className="p-4 text-center">
-              <p className="text-xs text-[#888888]">
+              <p className="text-xs text-[#99aabb]">
                 No signal detected for this trade yet.
               </p>
-              <p className="text-xs text-[#555555] mt-1">
+              <p className="text-xs text-[#778899] mt-1">
                 The agent hasn&apos;t analyzed this trade or found no divergence.
               </p>
             </div>
@@ -162,7 +162,7 @@ export function StarDetailPanel({ star, onClose }: StarDetailPanelProps) {
             Full Details →
           </a>
           {signal && (
-            <span className="text-xs text-[#555555]">
+            <span className="text-xs text-[#778899]">
               {new Date(signal.createdAt).toLocaleTimeString()}
             </span>
           )}
