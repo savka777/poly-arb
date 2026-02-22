@@ -172,19 +172,21 @@ function StarHoverCard({ star }: { star: StarData }) {
   )
 }
 
-function MarketStar({ star, center, onStarClick }: {
+function MarketStar({ star, center, onStarClick, hovered, onHover, onUnhover }: {
   star: StarData
   center: [number, number, number]
   onStarClick: (star: StarData) => void
+  hovered: boolean
+  onHover: () => void
+  onUnhover: () => void
 }) {
-  const [hovered, setHovered] = useState(false)
   const pos: [number, number, number] = [
     center[0] + star.localPosition[0],
     center[1] + star.localPosition[1] * 0.08, // squashed Y to match flattened disc
     center[2] + star.localPosition[2],
   ]
 
-  const glowSize = star.size * 1.8 * (hovered ? 1.5 : 1)
+  const glowSize = star.size * 1.6 * (hovered ? 1.5 : 1)
   const color = useMemo(() => new THREE.Color(star.color), [star.color])
 
   return (
@@ -196,12 +198,13 @@ function MarketStar({ star, center, onStarClick }: {
             e.stopPropagation()
             onStarClick(star)
           }}
-          onPointerOver={() => {
-            setHovered(true)
+          onPointerOver={(e) => {
+            e.stopPropagation()
+            onHover()
             document.body.style.cursor = "pointer"
           }}
           onPointerOut={() => {
-            setHovered(false)
+            onUnhover()
             document.body.style.cursor = "auto"
           }}
         >
@@ -210,7 +213,7 @@ function MarketStar({ star, center, onStarClick }: {
             map={getGlowTexture()}
             color={color}
             transparent
-            opacity={0.9 + star.emissiveIntensity * 0.1}
+            opacity={0.92}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             side={THREE.DoubleSide}
@@ -225,7 +228,7 @@ function MarketStar({ star, center, onStarClick }: {
             map={getGlowTexture()}
             color={color}
             transparent
-            opacity={0.2 + star.emissiveIntensity * 0.15}
+            opacity={0.25 + star.emissiveIntensity * 0.18}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
             side={THREE.DoubleSide}
@@ -329,6 +332,8 @@ export function GalaxyView({
   onConstellationClick,
   onStarClick,
 }: GalaxyViewProps) {
+  const [hoveredStarId, setHoveredStarId] = useState<string | null>(null)
+
   return (
     <group>
       {constellations.map((c) => {
@@ -358,6 +363,9 @@ export function GalaxyView({
                 star={star}
                 center={c.position}
                 onStarClick={onStarClick}
+                hovered={hoveredStarId === star.market.id}
+                onHover={() => setHoveredStarId(star.market.id)}
+                onUnhover={() => setHoveredStarId((prev) => prev === star.market.id ? null : prev)}
               />
             ))}
 

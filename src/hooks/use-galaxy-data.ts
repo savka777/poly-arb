@@ -175,7 +175,7 @@ function computeStarSize(volume: number, allVolumes: number[]): number {
   const sorted = [...allVolumes].sort((a, b) => a - b)
   const rank = sorted.indexOf(volume)
   const pct = allVolumes.length > 1 ? rank / (allVolumes.length - 1) : 0.5
-  return 0.15 + pct * 0.85
+  return 0.12 + pct * 0.6
 }
 
 function computeFreshness(createdAt: string): number {
