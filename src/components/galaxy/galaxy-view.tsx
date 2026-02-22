@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import * as THREE from "three"
 import { Billboard, Text } from "@react-three/drei"
+import { useFrame, useThree } from "@react-three/fiber"
 import { ParticleCloud } from "./particle-cloud"
 import { getGlowTexture } from "./glow-texture"
 import type { ConstellationData, StarData } from "@/hooks/use-galaxy-data"
@@ -112,6 +113,82 @@ function MarketStar({ star, center, onStarClick }: {
   )
 }
 
+function DistanceLabel({
+  position,
+  dimmed,
+  focused,
+  constellation: c,
+  onConstellationClick,
+}: {
+  position: [number, number, number]
+  dimmed: boolean
+  focused: boolean
+  constellation: ConstellationData
+  onConstellationClick: (c: ConstellationData) => void
+}) {
+  const groupRef = useRef<THREE.Group>(null)
+  const { camera } = useThree()
+
+  useFrame(() => {
+    if (!groupRef.current) return
+    const dist = camera.position.distanceTo(new THREE.Vector3(...position))
+    // Scale up with distance so text stays roughly the same screen size
+    const scale = Math.max(dist * 0.018, 1)
+    groupRef.current.scale.setScalar(scale)
+  })
+
+  return (
+    <Billboard
+      position={position}
+      follow
+      lockX={false}
+      lockY={false}
+      lockZ={false}
+    >
+      <group
+        ref={groupRef}
+        onClick={(e) => {
+          if (!focused) {
+            e.stopPropagation()
+            onConstellationClick(c)
+          }
+        }}
+        onPointerOver={() => { if (!focused) document.body.style.cursor = "pointer" }}
+        onPointerOut={() => { document.body.style.cursor = "auto" }}
+      >
+        <Text
+          fontSize={1.4}
+          color={dimmed ? "#445566" : "#ffffff"}
+          anchorX="center"
+          anchorY="bottom"
+          letterSpacing={0.12}
+          outlineWidth={0.15}
+          outlineBlur={0.4}
+          outlineColor="#000000"
+          outlineOpacity={0.8}
+        >
+          {c.name.toUpperCase()}
+        </Text>
+        <Text
+          fontSize={0.65}
+          color={dimmed ? "#334455" : "#99aabb"}
+          anchorX="center"
+          anchorY="top"
+          position={[0, -0.3, 0]}
+          outlineWidth={0.1}
+          outlineBlur={0.3}
+          outlineColor="#000000"
+          outlineOpacity={0.7}
+        >
+          {focused
+            ? `${c.stars.length} markets`
+            : `${c.stars.length} markets${c.signalCount > 0 ? ` · ${c.signalCount} signals` : ""}`}
+        </Text>
+      </group>
+    </Billboard>
+  )
+}
+
 export function GalaxyView({
   constellations,
   focusedConstellation,
@@ -168,58 +245,14 @@ export function GalaxyView({
               </mesh>
             )}
 
-            {/* Label */}
-            <Billboard
-              position={[
-                c.position[0],
-                c.position[1] + 6,
-                c.position[2],
-              ]}
-              follow
-              lockX={false}
-              lockY={false}
-              lockZ={false}
-            >
-              <group
-                onClick={(e) => {
-                  if (!focused) {
-                    e.stopPropagation()
-                    onConstellationClick(c)
-                  }
-                }}
-                onPointerOver={() => { if (!focused) document.body.style.cursor = "pointer" }}
-                onPointerOut={() => { document.body.style.cursor = "auto" }}
-              >
-                <Text
-                  fontSize={1.4}
-                  color={dimmed ? "#445566" : "#ffffff"}
-                  anchorX="center"
-                  anchorY="bottom"
-                  letterSpacing={0.12}
-                  outlineWidth={0.15}
-                  outlineBlur={0.4}
-                  outlineColor="#000000"
-                  outlineOpacity={0.8}
-                >
-                  {c.name.toUpperCase()}
-                </Text>
-                <Text
-                  fontSize={0.65}
-                  color={dimmed ? "#334455" : "#99aabb"}
-                  anchorX="center"
-                  anchorY="top"
-                  position={[0, -0.3, 0]}
-                  outlineWidth={0.1}
-                  outlineBlur={0.3}
-                  outlineColor="#000000"
-                  outlineOpacity={0.7}
-                >
-                  {focused
-                    ? `${c.stars.length} markets`
-                    : `${c.stars.length} markets${c.signalCount > 0 ? ` · ${c.signalCount} signals` : ""}`}
-                </Text>
-              </group>
-            </Billboard>
+            {/* Label — scales with distance so it stays readable */}
+            <DistanceLabel
+              position={[c.position[0], c.position[1] + 6, c.position[2]]}
+              dimmed={dimmed}
+              focused={focused}
+              constellation={c}
+              onConstellationClick={onConstellationClick}
+            />
           </group>
         )
       })}

@@ -42,21 +42,21 @@ const CATEGORY_POSITIONS: Record<string, [number, number, number]> = {
   technology: [22, 28, -12],
   world: [-38, 8, 22],
   culture: [8, -28, 18],
-  other: [0, 35, 0],
+  other: [-10, 25, 0],
 }
 
 // Each category gets a unique color palette + disc tilt for its galaxy
 const CATEGORY_COLORS: Record<string, { primary: string; accent: string }> = {
-  politics: { primary: "#ff6644", accent: "#ffaa33" },
-  crypto: { primary: "#00ccff", accent: "#7744ff" },
-  sports: { primary: "#ffaa22", accent: "#ffcc66" },
-  finance: { primary: "#ffdd00", accent: "#ff8800" },
-  science: { primary: "#aa66ff", accent: "#ff66aa" },
-  entertainment: { primary: "#ff44aa", accent: "#ff88dd" },
-  technology: { primary: "#4488ff", accent: "#44ddff" },
-  world: { primary: "#44ffaa", accent: "#44aaff" },
-  culture: { primary: "#ff8844", accent: "#ffcc44" },
-  other: { primary: "#8888cc", accent: "#aaaaee" },
+  politics: { primary: "#ff6633", accent: "#ff9955" },
+  crypto: { primary: "#00ddff", accent: "#00aadd" },
+  sports: { primary: "#6366f1", accent: "#a5b4fc" },
+  finance: { primary: "#ffd000", accent: "#ffaa00" },
+  science: { primary: "#cc44ff", accent: "#ee88ff" },
+  entertainment: { primary: "#ff2299", accent: "#ff66bb" },
+  technology: { primary: "#2266ff", accent: "#5599ff" },
+  world: { primary: "#44ccdd", accent: "#77ddee" },
+  culture: { primary: "#ff8800", accent: "#ffbb44" },
+  other: { primary: "#8888bb", accent: "#aaaadd" },
 }
 
 // Each galaxy disc tilted to a unique orientation — euler [x, y, z] in radians
@@ -279,7 +279,7 @@ export function useGalaxyData(): GalaxyData {
           market,
           signal,
           localPosition: local,
-          size: computeStarSize(market.volume, allVolumes),
+          size: computeStarSize(market.volume, allVolumes) * (signal ? 1.0 + Math.min(Math.abs(signal.ev) * 8, 2.0) : 0.6),
           color: computeStarColor(signal),
           emissiveIntensity: computeEmissiveIntensity(signal),
         }
