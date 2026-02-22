@@ -109,6 +109,20 @@ export interface NewsEvent {
   timestamp: string
 }
 
+export interface ScoutEvent {
+  id: string
+  article: { title: string; url: string; source: string; snippet?: string }
+  matchedMarkets: Array<{
+    marketId: string
+    question: string
+    category?: string
+    keywordOverlap: number
+    url?: string
+    capturedPrice?: number
+  }>
+  timestamp: string
+}
+
 export interface NewsMonitorStatus {
   running: boolean
   lastPollAt: string | null

@@ -1,6 +1,7 @@
 import { runEventPod } from '@/agent/graph';
 import { hasRecentSignal, pruneExpiredSignals } from '@/store/signals';
 import { addNewsEvent } from '@/store/news-events';
+import { addScoutEvent, isArticleUrlSeen, markArticleUrlSeen } from '@/store/scout-events';
 import { logActivity } from '@/store/activity-log';
 import { syncAllMarkets, syncRecentMarkets, getSyncStatus } from '@/data/market-sync';
 import { getAllMarketsList } from '@/store/markets';
@@ -300,6 +301,45 @@ function onRssMatches(matches: RssMatch[]): void {
       daysToExpiry,
     );
     enqueue(match.market, priority, 'news_match');
+  }
+
+  // Scout: surface high-relevance matches immediately (before LLM analysis)
+  const highRelevance = matches.filter((m) => m.keywordOverlap >= 0.4);
+  if (highRelevance.length > 0) {
+    // Console log each match as a structured trade alert
+    for (const match of highRelevance) {
+      console.log(
+        `[SCOUT] 🛸 RSS Alert | "${match.article.title.slice(0, 80)}"\n` +
+        `        → Market: "${match.market.question.slice(0, 80)}" ` +
+        `(overlap: ${(match.keywordOverlap * 100).toFixed(0)}%, liq: $${match.market.liquidity.toLocaleString()})`,
+      );
+    }
+
+    // Bundle all high-relevance matches from this poll into one ScoutEvent.
+    // Skip if this article URL was already surfaced — prevents duplicate alerts
+    // even across RSS poll cycles or after seenKeys eviction.
+    const representativeArticle = highRelevance[0].article;
+    const articleUrl = representativeArticle.url ?? '';
+    if (articleUrl && isArticleUrlSeen(articleUrl)) return;
+    markArticleUrlSeen(articleUrl);
+    addScoutEvent({
+      id: nanoid(),
+      article: {
+        title: representativeArticle.title,
+        url: representativeArticle.url ?? '',
+        source: representativeArticle.source,
+        snippet: representativeArticle.content?.slice(0, 200),
+      },
+      matchedMarkets: highRelevance.map((m) => ({
+        marketId: m.market.id,
+        question: m.market.question,
+        category: m.market.category,
+        keywordOverlap: m.keywordOverlap,
+        url: m.market.url,
+        capturedPrice: m.market.probability,
+      })),
+      timestamp: new Date().toISOString(),
+    });
   }
 }
 

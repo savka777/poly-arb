@@ -15,6 +15,7 @@ import RssParser from 'rss-parser';
 import { FEEDS, type FeedSource } from '@/data/feeds';
 import { logActivity } from '@/store/activity-log';
 import { hasSeenArticle, markArticleSeen, loadSeenKeys, pruneSeenArticles } from '@/store/seen-articles';
+import { getScoutKeywords } from '@/store/scout-config';
 import { config } from '@/lib/config';
 import type { Market, NewsResult } from '@/lib/types';
 
@@ -253,8 +254,14 @@ async function pollAllFeeds(): Promise<void> {
   }
 
   // Match against full market index
+  // Pre-filter by user-configured keywords (fast string check before expensive market loop)
+  const userKeywords = getScoutKeywords();
   const allMatches: RssMatch[] = [];
   for (const article of allArticles) {
+    if (userKeywords.length > 0) {
+      const text = `${article.title} ${article.content}`.toLowerCase();
+      if (!userKeywords.some((kw) => text.includes(kw))) continue;
+    }
     const matches = matchArticleToMarkets(article, activeMarkets);
     allMatches.push(...matches);
   }
