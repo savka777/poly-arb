@@ -52,23 +52,24 @@ const CATEGORY_POSITIONS: Record<string, [number, number, number]> = {
 }
 
 // Each category gets a unique color palette + disc tilt for its galaxy
+// Cohesive nebula palette — cool blues, warm golds, soft violets
 const CATEGORY_COLORS: Record<string, { primary: string; accent: string }> = {
-  politics:      { primary: "#ff7744", accent: "#ffaa77" },
-  crypto:        { primary: "#22ccee", accent: "#55ddff" },
-  sports:        { primary: "#6366f1", accent: "#a5b4fc" },
-  finance:       { primary: "#f0c030", accent: "#f5d670" },
-  science:       { primary: "#bb55ff", accent: "#dd99ff" },
-  entertainment: { primary: "#ff55aa", accent: "#ff88cc" },
-  technology:    { primary: "#3388ff", accent: "#66aaff" },
-  world:         { primary: "#55bbcc", accent: "#88ddee" },
-  culture:       { primary: "#ee8844", accent: "#ffbb77" },
-  esports:       { primary: "#44ddaa", accent: "#77eebb" },
-  weather:       { primary: "#77aadd", accent: "#aaccee" },
-  elections:     { primary: "#dd7766", accent: "#eeaa99" },
-  economy:       { primary: "#ddaa44", accent: "#eebb66" },
-  ai:            { primary: "#9988ff", accent: "#bbaaff" },
-  space:         { primary: "#6699dd", accent: "#88bbee" },
-  other:         { primary: "#9999cc", accent: "#bbbbee" },
+  politics:      { primary: "#e8a87c", accent: "#f0c8a8" },  // warm peach
+  crypto:        { primary: "#7ec8e3", accent: "#a8ddf0" },  // soft cyan
+  sports:        { primary: "#8b7ec8", accent: "#b0a8e0" },  // lavender
+  finance:       { primary: "#e8d07c", accent: "#f0e0a8" },  // warm gold
+  science:       { primary: "#b87ce8", accent: "#d0a8f0" },  // violet
+  entertainment: { primary: "#e87cb8", accent: "#f0a8d0" },  // soft magenta
+  technology:    { primary: "#7ca8e8", accent: "#a8c8f0" },  // steel blue
+  world:         { primary: "#7cd0d0", accent: "#a8e0e0" },  // teal
+  culture:       { primary: "#d0a870", accent: "#e0c8a0" },  // warm tan
+  esports:       { primary: "#70c0a8", accent: "#a0d8c8" },  // sage
+  weather:       { primary: "#90b8d8", accent: "#b0d0e8" },  // pale sky
+  elections:     { primary: "#d0907c", accent: "#e0b0a0" },  // dusty coral
+  economy:       { primary: "#c8b870", accent: "#d8d0a0" },  // muted gold
+  ai:            { primary: "#a890d8", accent: "#c0b0e8" },  // soft purple
+  space:         { primary: "#80a8c8", accent: "#a0c0d8" },  // deep sky
+  other:         { primary: "#a0a0b8", accent: "#c0c0d0" },  // silver
 }
 
 // Each galaxy disc tilted to a unique orientation — euler [x, y, z] in radians

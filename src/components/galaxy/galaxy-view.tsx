@@ -169,19 +169,21 @@ function DistanceLabel({
         >
           {c.name.toUpperCase()}
         </Text>
-        <Text
-          fontSize={0.65}
-          color={dimmed ? "#334455" : "#99aabb"}
-          anchorX="center"
-          anchorY="top"
-          position={[0, -0.3, 0]}
-          outlineWidth={0.1}
-          outlineBlur={0.3}
-          outlineColor="#000000"
-          outlineOpacity={0.7}
-        >
-          {`${c.stars.length} markets`}
-        </Text>
+        {focused && (
+          <Text
+            fontSize={0.65}
+            color={dimmed ? "#334455" : "#99aabb"}
+            anchorX="center"
+            anchorY="top"
+            position={[0, -0.3, 0]}
+            outlineWidth={0.1}
+            outlineBlur={0.3}
+            outlineColor="#000000"
+            outlineOpacity={0.7}
+          >
+            {`${c.stars.length} trades`}
+          </Text>
+        )}
       </group>
     </Billboard>
   )

@@ -67,10 +67,8 @@ function AgentStatsOverlay() {
           </div>
         </div>
         <div className="space-y-1.5">
-          <StatRow label="Signals generated" value={signalCount} />
-          <StatRow label="High-EV" value={highEv} highlight />
-          <StatRow label="Alpha found" value={`+${totalAlphaPp.toFixed(0)}pp`} />
-          <StatRow label="Markets tracked" value={health?.signalCount ?? 0} />
+          <StatRow label="Total trades" value={signalCount} />
+          <StatRow label="High signal" value={highEv} highlight />
         </div>
       </div>
     </div>
@@ -195,22 +193,22 @@ function MarketChart({ star }: { star: StarData }) {
 }
 
 const FILTER_COLORS: Record<string, string> = {
-  politics: "#ff7744",
-  crypto: "#22ccee",
-  sports: "#6366f1",
-  finance: "#f0c030",
-  science: "#bb55ff",
-  entertainment: "#ff55aa",
-  technology: "#3388ff",
-  world: "#55bbcc",
-  culture: "#ee8844",
-  esports: "#44ddaa",
-  weather: "#77aadd",
-  elections: "#dd7766",
-  economy: "#ddaa44",
-  ai: "#9988ff",
-  space: "#6699dd",
-  other: "#9999cc",
+  politics: "#e8a87c",
+  crypto: "#7ec8e3",
+  sports: "#8b7ec8",
+  finance: "#e8d07c",
+  science: "#b87ce8",
+  entertainment: "#e87cb8",
+  technology: "#7ca8e8",
+  world: "#7cd0d0",
+  culture: "#d0a870",
+  esports: "#70c0a8",
+  weather: "#90b8d8",
+  elections: "#d0907c",
+  economy: "#c8b870",
+  ai: "#a890d8",
+  space: "#80a8c8",
+  other: "#a0a0b8",
 }
 
 export function GalaxyScene() {
@@ -222,6 +220,8 @@ export function GalaxyScene() {
   const [focusedConstellation, setFocusedConstellation] = useState<string | null>(null)
   const [selectedStar, setSelectedStar] = useState<StarData | null>(null)
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set())
+  const [customColors, setCustomColors] = useState<Record<string, string>>({})
+  const [colorPickerTarget, setColorPickerTarget] = useState<{ name: string; x: number; y: number } | null>(null)
 
   const toggleCategory = useCallback((name: string) => {
     setHiddenCategories((prev) => {
@@ -235,9 +235,25 @@ export function GalaxyScene() {
     })
   }, [])
 
+  const getColor = useCallback((name: string) => {
+    return customColors[name] ?? FILTER_COLORS[name] ?? "#9999cc"
+  }, [customColors])
+
   const filteredConstellations = useMemo(
-    () => galaxyData.constellations.filter((c) => !hiddenCategories.has(c.name)),
-    [galaxyData.constellations, hiddenCategories],
+    () => galaxyData.constellations
+      .filter((c) => !hiddenCategories.has(c.name))
+      .map((c) => {
+        const custom = customColors[c.name]
+        if (!custom) return c
+        // Override constellation colors with custom color
+        return {
+          ...c,
+          primaryColor: custom,
+          accentColor: custom,
+          layers: c.layers.map((l) => ({ ...l, color: l.color === c.primaryColor || l.color === c.accentColor ? custom : l.color })),
+        }
+      }),
+    [galaxyData.constellations, hiddenCategories, customColors],
   )
 
   const handleConstellationClick = useCallback((constellation: ConstellationData) => {
@@ -297,7 +313,7 @@ export function GalaxyScene() {
             </button>
           )}
           <div>
-            <h1 className="text-sm font-semibold tracking-tight text-[#ccd0e0]">
+            <h1 className="text-lg font-semibold tracking-tight text-[#ccd0e0]">
               DARWIN CAPITAL
             </h1>
             {focusedConstellation && (
@@ -319,7 +335,7 @@ export function GalaxyScene() {
           <div className={`bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg overflow-y-auto ${selectedStar ? "flex-1 min-h-0" : "h-full"}`}>
             <div className="px-3 py-2 border-b border-[#333333] sticky top-0 bg-[#181818]/95">
               <span className="text-xs uppercase tracking-wider text-[#556688]">
-                {focusedData.stars.length} Markets
+                {focusedData.stars.length} Trades
               </span>
             </div>
             {focusedData.stars
@@ -368,32 +384,87 @@ export function GalaxyScene() {
 
       {/* Category filter */}
       {cameraMode === "galaxy" && (
-        <div style={{ position: "absolute", top: 16, left: 180, right: 230, zIndex: 40 }}>
-          <div className="bg-[#181818]/80 backdrop-blur border border-[#333333] rounded-lg px-3 py-2 flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
+        <div style={{ position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", maxWidth: "60vw", zIndex: 40 }}>
+          <div className="bg-[#0d0d10]/60 backdrop-blur-sm border border-[#ffffff10] rounded-full px-4 py-1.5 flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
             {galaxyData.constellations.map((c) => {
               const hidden = hiddenCategories.has(c.name)
-              const color = FILTER_COLORS[c.name] ?? "#9999cc"
+              const color = getColor(c.name)
               return (
                 <button
                   key={c.name}
                   onClick={() => toggleCategory(c.name)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded transition-all shrink-0"
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setColorPickerTarget({ name: c.name, x: e.clientX, y: e.clientY })
+                  }}
+                  className="px-2.5 py-0.5 rounded-full transition-all shrink-0"
                   style={{
-                    opacity: hidden ? 0.3 : 1,
-                    background: hidden ? "transparent" : `${color}15`,
-                    border: `1px solid ${hidden ? "#333333" : color}40`,
+                    opacity: hidden ? 0.35 : 1,
+                    background: hidden ? "transparent" : `${color}18`,
+                    border: `1px solid ${hidden ? "#ffffff10" : `${color}35`}`,
+                    color: hidden ? "#666666" : color,
                   }}
                 >
-                  <div
-                    className="h-2 w-2 rounded-full"
-                    style={{ background: color, opacity: hidden ? 0.3 : 1 }}
-                  />
-                  <span className="text-xs uppercase tracking-wider" style={{ color: hidden ? "#334455" : "#aabbcc" }}>
+                  <span className="text-xs uppercase tracking-wider">
                     {c.name}
                   </span>
                 </button>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Color picker */}
+      {colorPickerTarget && (
+        <div
+          className="fixed inset-0 z-[60]"
+          onClick={() => setColorPickerTarget(null)}
+        >
+          <div
+            className="absolute bg-[#181818]/95 backdrop-blur border border-[#333333] rounded-lg p-3"
+            style={{ left: colorPickerTarget.x, top: colorPickerTarget.y + 8 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-xs text-[#888888] uppercase tracking-wider mb-2">
+              {colorPickerTarget.name} color
+            </div>
+            <input
+              type="color"
+              value={getColor(colorPickerTarget.name)}
+              onChange={(e) => {
+                setCustomColors((prev) => ({ ...prev, [colorPickerTarget.name]: e.target.value }))
+              }}
+              className="w-full h-8 rounded cursor-pointer border-0 bg-transparent"
+            />
+            <div className="flex gap-1.5 mt-2 flex-wrap max-w-[180px]">
+              {["#e8a87c", "#7ec8e3", "#8b7ec8", "#e8d07c", "#b87ce8", "#e87cb8", "#7ca8e8", "#7cd0d0", "#d0a870", "#70c0a8", "#a890d8", "#80a8c8"].map((preset) => (
+                <button
+                  key={preset}
+                  onClick={() => {
+                    setCustomColors((prev) => ({ ...prev, [colorPickerTarget.name]: preset }))
+                    setColorPickerTarget(null)
+                  }}
+                  className="w-5 h-5 rounded-full border border-[#444444] hover:scale-125 transition-transform"
+                  style={{ background: preset }}
+                />
+              ))}
+            </div>
+            {customColors[colorPickerTarget.name] && (
+              <button
+                onClick={() => {
+                  setCustomColors((prev) => {
+                    const next = { ...prev }
+                    delete next[colorPickerTarget.name]
+                    return next
+                  })
+                  setColorPickerTarget(null)
+                }}
+                className="text-xs text-[#666666] hover:text-[#aaaaaa] mt-2 transition-colors"
+              >
+                Reset to default
+              </button>
+            )}
           </div>
         </div>
       )}
