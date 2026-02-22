@@ -1,17 +1,21 @@
 "use client"
 
-import { useState, useCallback, useRef, Suspense } from "react"
+import { useState, useCallback, useRef, useMemo, Suspense } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import * as THREE from "three"
 import { Background } from "./background"
 import { GalaxyView } from "./galaxy-view"
 import { CameraController } from "./camera-controller"
 import { StarDetailPanel } from "./star-detail-panel"
+import { LightweightChart } from "@/components/lightweight-chart"
 import { useGalaxyData } from "@/hooks/use-galaxy-data"
 import { useSignals } from "@/hooks/use-signals"
 import { useHealth } from "@/hooks/use-health"
+import { usePrices } from "@/hooks/use-prices"
+import type { ChartDataPoint } from "@/lib/chart-types"
 import type { ConstellationData, StarData } from "@/hooks/use-galaxy-data"
 import type { CameraMode } from "./camera-controller"
+import type { UTCTimestamp } from "lightweight-charts"
 import { ArrowLeft, Loader2 } from "lucide-react"
 
 // Invisible plane for raycasting mouse position into 3D space
@@ -102,6 +106,7 @@ function SceneContent({
   cameraTarget,
   mousePos,
   onConstellationClick,
+  onStarClick,
 }: {
   constellations: ConstellationData[]
   focusedConstellation: string | null
@@ -109,6 +114,7 @@ function SceneContent({
   cameraTarget: [number, number, number]
   mousePos: React.MutableRefObject<THREE.Vector3>
   onConstellationClick: (constellation: ConstellationData) => void
+  onStarClick: (star: StarData) => void
 }) {
   return (
     <>
@@ -121,10 +127,70 @@ function SceneContent({
           focusedConstellation={focusedConstellation}
           mousePos={mousePos.current}
           onConstellationClick={onConstellationClick}
+          onStarClick={onStarClick}
         />
       )}
       <CameraController mode={cameraMode} target={cameraTarget} />
     </>
+  )
+}
+
+function MarketChart({ star }: { star: StarData }) {
+  const { data: priceData, isLoading } = usePrices(star.market.clobTokenId, "1w")
+
+  const chartData = useMemo<ChartDataPoint[]>(() => {
+    if (!priceData?.prices || priceData.prices.length === 0) return []
+    return priceData.prices.map((p) => ({
+      time: p.time as UTCTimestamp,
+      value: p.price,
+    }))
+  }, [priceData])
+
+  const darwinData = useMemo<ChartDataPoint[] | undefined>(() => {
+    if (!star.signal || chartData.length === 0) return undefined
+    const startIdx = Math.max(0, Math.floor(chartData.length * 0.8))
+    return chartData.slice(startIdx).map((p) => ({
+      time: p.time,
+      value: star.signal!.darwinEstimate,
+    }))
+  }, [star.signal, chartData])
+
+  return (
+    <div className="h-[320px] shrink-0 bg-[#0a0a1a]/80 backdrop-blur border border-[#1a1a3a] rounded-lg overflow-hidden">
+      <div className="px-3 py-1.5 border-b border-[#1a1a3a]">
+        <p className="text-[10px] text-[#aabbcc] truncate">{star.market.question}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[10px] text-[#556688]">
+            {(star.market.probability * 100).toFixed(1)}%
+          </span>
+          {star.signal && (
+            <span className={`text-[10px] font-mono ${star.signal.ev > 0 ? "text-[#00ff88]" : "text-[#ff4466]"}`}>
+              {star.signal.ev > 0 ? "+" : ""}{(star.signal.ev * 100).toFixed(1)}pp
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="h-[275px]">
+        {isLoading || chartData.length === 0 ? (
+          <div className="flex h-full items-center justify-center">
+            <span className="text-[10px] text-[#556688] animate-pulse">
+              {isLoading ? "Loading..." : "No price data"}
+            </span>
+          </div>
+        ) : (
+          <LightweightChart
+            data={chartData}
+            darwinData={darwinData}
+            chartType="area"
+            lineColor="#4488cc"
+            darwinColor={star.signal?.ev && star.signal.ev > 0 ? "#00ff88" : "#ff4466"}
+            showDarwinEstimate={!!star.signal}
+            hideTimeScale
+            height={275}
+          />
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -150,6 +216,10 @@ export function GalaxyScene() {
     setSelectedStar(null)
   }, [])
 
+  const handleStarClick = useCallback((star: StarData) => {
+    setSelectedStar(star)
+  }, [])
+
   // Find focused constellation's stars for the side list
   const focusedData = galaxyData.constellations.find((c) => c.name === focusedConstellation)
 
@@ -169,6 +239,7 @@ export function GalaxyScene() {
             cameraTarget={cameraTarget}
             mousePos={mousePos}
             onConstellationClick={handleConstellationClick}
+            onStarClick={handleStarClick}
           />
         </Suspense>
       </Canvas>
@@ -204,10 +275,11 @@ export function GalaxyScene() {
       {/* Agent stats */}
       <AgentStatsOverlay />
 
-      {/* Market list when zoomed into constellation */}
+      {/* Market list + chart when zoomed into constellation */}
       {focusedData && (
-        <div className="absolute left-4 top-20 bottom-4 w-[280px] z-40 overflow-hidden pointer-events-auto">
-          <div className="h-full bg-[#0a0a1a]/80 backdrop-blur border border-[#1a1a3a] rounded-lg overflow-y-auto">
+        <div className="absolute left-4 top-20 bottom-4 w-[380px] z-40 flex flex-col gap-2 pointer-events-auto">
+          {/* Market list */}
+          <div className={`bg-[#0a0a1a]/80 backdrop-blur border border-[#1a1a3a] rounded-lg overflow-y-auto ${selectedStar ? "flex-1 min-h-0" : "h-full"}`}>
             <div className="px-3 py-2 border-b border-[#1a1a3a] sticky top-0 bg-[#0a0a1a]/95">
               <span className="text-[10px] uppercase tracking-wider text-[#556688]">
                 {focusedData.stars.length} Markets
@@ -219,7 +291,9 @@ export function GalaxyScene() {
                 <button
                   key={star.market.id}
                   onClick={() => setSelectedStar(star)}
-                  className="w-full text-left px-3 py-2 border-b border-[#0d0d20] hover:bg-[#111128] transition-colors"
+                  className={`w-full text-left px-3 py-2 border-b border-[#0d0d20] hover:bg-[#111128] transition-colors ${
+                    selectedStar?.market.id === star.market.id ? "bg-[#111128]" : ""
+                  }`}
                 >
                   <p className="text-[11px] text-[#aabbcc] leading-tight truncate">
                     {star.market.question}
@@ -241,6 +315,9 @@ export function GalaxyScene() {
                 </button>
               ))}
           </div>
+
+          {/* Chart panel */}
+          {selectedStar && <MarketChart star={selectedStar} />}
         </div>
       )}
 

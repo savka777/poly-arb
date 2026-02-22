@@ -49,7 +49,7 @@ const CATEGORY_POSITIONS: Record<string, [number, number, number]> = {
 const CATEGORY_COLORS: Record<string, { primary: string; accent: string }> = {
   politics: { primary: "#ff6644", accent: "#ffaa33" },
   crypto: { primary: "#00ccff", accent: "#7744ff" },
-  sports: { primary: "#44ff88", accent: "#88ffcc" },
+  sports: { primary: "#ffaa22", accent: "#ffcc66" },
   finance: { primary: "#ffdd00", accent: "#ff8800" },
   science: { primary: "#aa66ff", accent: "#ff66aa" },
   entertainment: { primary: "#ff44aa", accent: "#ff88dd" },
